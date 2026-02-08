@@ -62,9 +62,9 @@ class DownloadManager:
         elif 'dailymotion.com' in domain:
             return self.download_dailymotion(url, quality)
         
-        # Instagram
+        # Instagram (Currently unavailable due to rate limits)
         elif 'instagram.com' in domain:
-            return self.download_instagram(url)
+            return self.download_instagram_alternative(url)
         
         # Mega
         elif 'mega.nz' in domain or 'mega.io' in domain:
@@ -282,6 +282,100 @@ class DownloadManager:
         except Exception as e:
             await client.disconnect()
             raise e
+    
+    def download_instagram_alternative(self, url):
+        """Alternative Instagram download using multiple methods"""
+        import time
+        timestamp = int(time.time())
+        
+        # Method 1: Try with cookies and different extractors
+        try:
+            proxy = self.get_random_proxy()
+            
+            ydl_opts = {
+                'format': 'best',
+                'outtmpl': os.path.join(self.download_folder, f'{timestamp}_%(id)s.%(ext)s'),
+                'quiet': False,
+                'no_warnings': True,
+                'extractor_args': {
+                    'instagram': {
+                        'api': 'graphql'
+                    }
+                },
+                'http_headers': {
+                    'User-Agent': 'Instagram 219.0.0.12.117 Android',
+                    'Accept': '*/*',
+                    'Accept-Language': 'en-US',
+                    'X-IG-App-ID': '936619743392459',
+                    'X-ASBD-ID': '198387',
+                    'X-IG-WWW-Claim': '0',
+                    'Origin': 'https://www.instagram.com',
+                    'Referer': 'https://www.instagram.com/'
+                }
+            }
+            
+            if proxy:
+                ydl_opts['proxy'] = proxy
+            
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(url, download=True)
+                filename = ydl.prepare_filename(info)
+                return os.path.basename(filename)
+        except Exception as e:
+            print(f"Instagram method 1 failed: {e}")
+        
+        # Method 2: Try embed URL
+        try:
+            if '/p/' in url or '/reel/' in url:
+                shortcode = url.split('/')[-2]
+                embed_url = f'https://www.instagram.com/p/{shortcode}/embed/'
+                
+                ydl_opts = {
+                    'format': 'best',
+                    'outtmpl': os.path.join(self.download_folder, f'{timestamp}_instagram.%(ext)s'),
+                    'quiet': False,
+                    'http_headers': {
+                        'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15',
+                        'Referer': 'https://www.instagram.com/'
+                    }
+                }
+                
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                    info = ydl.extract_info(embed_url, download=True)
+                    filename = ydl.prepare_filename(info)
+                    return os.path.basename(filename)
+        except Exception as e:
+            print(f"Instagram method 2 failed: {e}")
+        
+        # Method 3: Direct API scraping
+        try:
+            if '/p/' in url or '/reel/' in url:
+                shortcode = url.split('/')[-2]
+                api_url = f'https://www.instagram.com/p/{shortcode}/?__a=1&__d=dis'
+                
+                headers = {
+                    'User-Agent': 'Instagram 219.0.0.12.117 Android',
+                    'Accept': '*/*',
+                    'X-IG-App-ID': '936619743392459'
+                }
+                
+                response = requests.get(api_url, headers=headers)
+                if response.status_code == 200:
+                    data = response.json()
+                    
+                    # Extract video URL from JSON
+                    try:
+                        media = data['items'][0]
+                        if 'video_versions' in media:
+                            video_url = media['video_versions'][0]['url']
+                            return self.download_direct(video_url)
+                    except:
+                        pass
+        except Exception as e:
+            print(f"Instagram method 3 failed: {e}")
+        
+        # All methods failed
+        raise Exception("Instagram download failed. The post may be private, deleted, or Instagram is blocking requests. Try: YouTube, Twitter, TikTok instead.")
     
     def download_instagram(self, url):
         """Download Instagram using yt-dlp (more reliable than instaloader)"""
