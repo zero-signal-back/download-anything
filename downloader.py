@@ -284,33 +284,64 @@ class DownloadManager:
             raise e
     
     def download_instagram(self, url):
+        """Download Instagram using yt-dlp (more reliable than instaloader)"""
         try:
-            L = instaloader.Instaloader(
-                dirname_pattern=self.download_folder,
-                download_video_thumbnails=False,
-                download_geotags=False,
-                download_comments=False,
-                save_metadata=False,
-                compress_json=False
-            )
+            import time
+            timestamp = int(time.time())
             
-            if '/p/' in url or '/reel/' in url:
-                shortcode = url.split('/')[-2]
-                post = instaloader.Post.from_shortcode(L.context, shortcode)
-                L.download_post(post, target='')
-                
-                # Get only video/image files (not json/txt)
-                files = [f for f in os.listdir(self.download_folder) 
-                        if f.endswith(('.mp4', '.jpg', '.jpeg', '.png')) and not f.endswith('.json.xz')]
-                
-                if files:
-                    latest = max([os.path.join(self.download_folder, f) for f in files], key=os.path.getctime)
-                    return os.path.basename(latest)
+            proxy = self.get_random_proxy()
             
-            raise Exception("Instagram download failed. Could not find media file.")
+            ydl_opts = {
+                'format': 'best',
+                'outtmpl': os.path.join(self.download_folder, f'{timestamp}_%(title)s.%(ext)s'),
+                'quiet': False,
+                'http_headers': {
+                    'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1',
+                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                    'Accept-Language': 'en-US,en;q=0.9',
+                    'Referer': 'https://www.instagram.com/'
+                }
+            }
+            
+            if proxy:
+                ydl_opts['proxy'] = proxy
+            
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(url, download=True)
+                filename = ydl.prepare_filename(info)
+                return os.path.basename(filename)
+                
         except Exception as e:
-            print(f"Instagram error: {e}")
-            raise Exception(f"Instagram download failed: {str(e)}")
+            print(f"Instagram yt-dlp error: {e}")
+            # Fallback to instaloader
+            try:
+                L = instaloader.Instaloader(
+                    dirname_pattern=self.download_folder,
+                    download_video_thumbnails=False,
+                    download_geotags=False,
+                    download_comments=False,
+                    save_metadata=False,
+                    compress_json=False,
+                    user_agent='Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15'
+                )
+                
+                if '/p/' in url or '/reel/' in url:
+                    shortcode = url.split('/')[-2]
+                    post = instaloader.Post.from_shortcode(L.context, shortcode)
+                    L.download_post(post, target='')
+                    
+                    # Get only video/image files (not json/txt)
+                    files = [f for f in os.listdir(self.download_folder) 
+                            if f.endswith(('.mp4', '.jpg', '.jpeg', '.png')) and not f.endswith('.json.xz')]
+                    
+                    if files:
+                        latest = max([os.path.join(self.download_folder, f) for f in files], key=os.path.getctime)
+                        return os.path.basename(latest)
+                
+                raise Exception("Instagram download failed. Could not find media file.")
+            except Exception as e2:
+                print(f"Instagram instaloader error: {e2}")
+                raise Exception(f"Instagram download failed. The post may be private or require login. Try a public post.")
     
     def download_mega(self, url):
         if not MEGA_AVAILABLE:
