@@ -4,8 +4,7 @@
 # Install Python dependencies
 pip install -r requirements.txt
 
-# Install FFmpeg
-apt-get update
-apt-get install -y ffmpeg
+# Install static FFmpeg binary
+python -c "from static_ffmpeg import run; run.add_paths()"
 
 echo "Build completed successfully!"
