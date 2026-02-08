@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fake ID Generator - For Testing Only</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .id-selector {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+        
+        .id-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 30px;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: transform 0.3s, box-shadow 0.3s;
+            text-align: center;
+            color: white;
+        }
+        
+        .id-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        
+        .id-card.active {
+            border: 3px solid #FFD700;
+            transform: scale(1.05);
+        }
+        
+        .id-card i {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+        
+        .form-container {
+            display: none;
+            background: rgba(255,255,255,0.1);
+            padding: 30px;
+            border-radius: 15px;
+            margin-top: 20px;
+        }
+        
+        .form-container.active {
+            display: block;
+            animation: fadeIn 0.5s;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: white;
+            font-weight: 500;
+        }
+        
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 8px;
+            background: rgba(0,0,0,0.3);
+            color: white;
+            font-size: 16px;
+        }
+        
+        .form-group input::placeholder,
+        .form-group textarea::placeholder {
+            color: rgba(255,255,255,0.5);
+        }
+        
+        .form-group select option {
+            background: #1a1a2e;
+            color: white;
+        }
+        
+        .preview-container {
+            margin-top: 30px;
+            text-align: center;
+            display: none;
+        }
+        
+        .preview-container.active {
+            display: block;
+            animation: fadeIn 0.5s;
+        }
+        
+        .preview-container img {
+            max-width: 100%;
+            border-radius: 10px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        }
+        
+        .disclaimer {
+            background: rgba(255,0,0,0.2);
+            border: 2px solid #ff4444;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            color: white;
+        }
+        
+        .nav-links {
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        .nav-links a {
+            color: white;
+            text-decoration: none;
+            margin: 0 15px;
+            padding: 10px 20px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 8px;
+            transition: all 0.3s;
+        }
+        
+        .nav-links a:hover {
+            background: rgba(255,255,255,0.2);
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1><i class="fas fa-id-card"></i> Fake ID Generator</h1>
+        <p style="text-align: center; color: rgba(255,255,255,0.8);">Generate fake IDs and certificates for testing purposes only</p>
+        
+        <div class="nav-links">
+            <a href="/"><i class="fas fa-download"></i> Downloader</a>
+            <a href="/username-finder"><i class="fas fa-search"></i> Username Finder</a>
+        </div>
+        
+        <div class="disclaimer">
+            <h3><i class="fas fa-exclamation-triangle"></i> DISCLAIMER</h3>
+            <p><strong>FOR EDUCATIONAL AND TESTING PURPOSES ONLY</strong></p>
+            <p>These generated documents are NOT VALID and should NOT be used for any illegal purposes. 
+            All generated IDs contain "SAMPLE - NOT VALID" watermark. Misuse of these tools may result in legal consequences.</p>
+        </div>
+        
+        <div class="id-selector">
+            <div class="id-card" onclick="selectIDType('aadhar')">
+                <i class="fas fa-address-card"></i>
+                <h3>Aadhar Card</h3>
+                <p>Indian Identity Card</p>
+            </div>
+            
+            <div class="id-card" onclick="selectIDType('pan')">
+                <i class="fas fa-credit-card"></i>
+                <h3>PAN Card</h3>
+                <p>Tax Identity Card</p>
+            </div>
+            
+            <div class="id-card" onclick="selectIDType('certificate')">
+                <i class="fas fa-certificate"></i>
+                <h3>Certificate</h3>
+                <p>Course Completion</p>
+            </div>
+        </div>
+        
+        <!-- Aadhar Form -->
+        <div id="aadhar-form" class="form-container">
+            <h2><i class="fas fa-address-card"></i> Generate Aadhar Card</h2>
+            <div class="form-group">
+                <label>Full Name *</label>
+                <input type="text" id="aadhar-name" placeholder="Enter full name" required>
+            </div>
+            <div class="form-group">
+                <label>Date of Birth *</label>
+                <input type="date" id="aadhar-dob" required>
+            </div>
+            <div class="form-group">
+                <label>Gender *</label>
+                <select id="aadhar-gender">
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Other">Other</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Address *</label>
+                <textarea id="aadhar-address" rows="3" placeholder="Enter full address" required></textarea>
+            </div>
+            <button class="download-btn" onclick="generateID('aadhar')">
+                <i class="fas fa-magic"></i> Generate Aadhar Card
+            </button>
+        </div>
+        
+        <!-- PAN Form -->
+        <div id="pan-form" class="form-container">
+            <h2><i class="fas fa-credit-card"></i> Generate PAN Card</h2>
+            <div class="form-group">
+                <label>Full Name *</label>
+                <input type="text" id="pan-name" placeholder="Enter full name" required>
+            </div>
+            <div class="form-group">
+                <label>Father's Name *</label>
+                <input type="text" id="pan-father" placeholder="Enter father's name" required>
+            </div>
+            <div class="form-group">
+                <label>Date of Birth *</label>
+                <input type="date" id="pan-dob" required>
+            </div>
+            <div class="form-group">
+                <label>PAN Number (Optional - Auto-generated if empty)</label>
+                <input type="text" id="pan-number" placeholder="ABCDE1234F" maxlength="10">
+            </div>
+            <button class="download-btn" onclick="generateID('pan')">
+                <i class="fas fa-magic"></i> Generate PAN Card
+            </button>
+        </div>
+        
+        <!-- Certificate Form -->
+        <div id="certificate-form" class="form-container">
+            <h2><i class="fas fa-certificate"></i> Generate Certificate</h2>
+            <div class="form-group">
+                <label>Student Name *</label>
+                <input type="text" id="cert-name" placeholder="Enter student name" required>
+            </div>
+            <div class="form-group">
+                <label>Course Name *</label>
+                <input type="text" id="cert-course" placeholder="e.g., Web Development" required>
+            </div>
+            <div class="form-group">
+                <label>Certificate Type *</label>
+                <select id="cert-type">
+                    <option value="completion">Completion</option>
+                    <option value="achievement">Achievement</option>
+                    <option value="participation">Participation</option>
+                    <option value="excellence">Excellence</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Date *</label>
+                <input type="date" id="cert-date" required>
+            </div>
+            <button class="download-btn" onclick="generateID('certificate')">
+                <i class="fas fa-magic"></i> Generate Certificate
+            </button>
+        </div>
+        
+        <!-- Preview -->
+        <div id="preview" class="preview-container">
+            <h2>Generated Document</h2>
+            <img id="preview-img" src="" alt="Generated ID">
+            <br><br>
+            <button class="download-btn" onclick="downloadGenerated()">
+                <i class="fas fa-download"></i> Download
+            </button>
+            <button class="download-btn" onclick="resetForm()" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                <i class="fas fa-redo"></i> Generate Another
+            </button>
+        </div>
+        
+        <div id="loading" class="loading" style="display: none;">
+            <div class="spinner"></div>
+            <p>Generating your document...</p>
+        </div>
+    </div>
+    
+    <script src="{{ url_for('static', filename='fake_id.js') }}"></script>
+</body>
+</html>
