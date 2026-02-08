@@ -1,7 +1,7 @@
 flask==3.0.0
 yt-dlp==2024.3.10
 instaloader==4.10
-megapy==1.0.0
+mega.py==1.0.8
 gdown==5.1.0
 requests==2.31.0
 internetarchive==3.5.0
