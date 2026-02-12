@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thumbnail Generator - Do Anything</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .tool-container { max-width: 900px; margin: 40px auto; padding: 30px; background: white; border-radius: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.1); }
+        .tool-header { text-align: center; margin-bottom: 30px; }
+        .tool-header h1 { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 36px; margin-bottom: 10px; }
+        .upload-box { border: 3px dashed #f5576c; border-radius: 15px; padding: 50px 20px; text-align: center; cursor: pointer; transition: all 0.3s; background: rgba(245, 87, 108, 0.05); }
+        .upload-box:hover { background: rgba(245, 87, 108, 0.1); border-color: #f093fb; }
+        .upload-box input { display: none; }
+        .upload-icon { font-size: 60px; color: #f5576c; margin-bottom: 15px; }
+        .video-preview { margin-top: 25px; display: none; }
+        .video-preview.active { display: block; }
+        .video-preview video { width: 100%; max-height: 400px; border-radius: 10px; }
+        .time-selector { margin: 20px 0; }
+        .time-selector input[type="range"] { width: 100%; }
+        .time-display { text-align: center; font-size: 18px; font-weight: 600; color: #f5576c; margin: 10px 0; }
+        .thumbnail-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin: 20px 0; }
+        .thumbnail-item { position: relative; border: 3px solid #e0e0e0; border-radius: 10px; overflow: hidden; cursor: pointer; transition: all 0.3s; }
+        .thumbnail-item:hover { border-color: #f5576c; transform: scale(1.05); }
+        .thumbnail-item canvas { width: 100%; display: block; }
+        .thumbnail-time { position: absolute; bottom: 5px; right: 5px; background: rgba(0,0,0,0.7); color: white; padding: 3px 8px; border-radius: 5px; font-size: 12px; }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 8px; font-weight: 600; color: #333; }
+        .form-group select { width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 10px; font-size: 15px; }
+        .button-group { display: flex; gap: 10px; margin-top: 20px; }
+        .btn { flex: 1; padding: 15px; border: none; border-radius: 10px; font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.3s; }
+        .btn-primary { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 5px 20px rgba(245, 87, 108, 0.4); }
+        .btn-secondary { background: #6c757d; color: white; }
+        .back-link { display: inline-block; margin-bottom: 20px; color: #f5576c; text-decoration: none; font-weight: 600; }
+        canvas { display: none; }
+    </style>
+</head>
+<body>
+    <script async="async" data-cfasync="false" src="//breachuptown.com/6f/78/04/6f780474eb2a9dd7858efa9f1093bfff.js"></script>
+    <div class="container">
+        <a href="/do-anything" class="back-link"><i class="fas fa-arrow-left"></i> Back to Tools</a>
+        
+        <div class="tool-container">
+            <div class="tool-header">
+                <h1><i class="fas fa-image"></i> Thumbnail Generator</h1>
+                <p>Extract perfect thumbnails from your videos</p>
+            </div>
+            
+            <div class="upload-box" onclick="document.getElementById('videoFile').click()">
+                <input type="file" id="videoFile" accept="video/*" onchange="handleVideoUpload(event)">
+                <div class="upload-icon"><i class="fas fa-cloud-upload-alt"></i></div>
+                <h3>Click to upload video</h3>
+                <p>Generate thumbnails from any video</p>
+            </div>
+            
+            <div class="video-preview" id="videoPreview">
+                <video id="videoPlayer" controls></video>
+                
+                <div class="time-selector">
+                    <label><i class="fas fa-clock"></i> Select Time</label>
+                    <input type="range" id="timeSlider" min="0" max="100" value="0" step="0.1" oninput="seekVideo()">
+                    <div class="time-display" id="timeDisplay">00:00</div>
+                </div>
+                
+                <div class="form-group">
+                    <label><i class="fas fa-file-image"></i> Format</label>
+                    <select id="format">
+                        <option value="png">PNG (Best Quality)</option>
+                        <option value="jpeg">JPEG (Smaller Size)</option>
+                        <option value="webp">WebP (Modern)</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label><i class="fas fa-expand"></i> Resolution</label>
+                    <select id="resolution">
+                        <option value="original">Original</option>
+                        <option value="1920x1080">1920x1080 (Full HD)</option>
+                        <option value="1280x720">1280x720 (HD)</option>
+                        <option value="854x480">854x480 (SD)</option>
+                    </select>
+                </div>
+                
+                <div class="button-group">
+                    <button class="btn btn-secondary" onclick="generateAutoThumbnails()">
+                        <i class="fas fa-magic"></i> Auto Generate (5 frames)
+                    </button>
+                    <button class="btn btn-primary" onclick="captureCurrentFrame()">
+                        <i class="fas fa-camera"></i> Capture Current Frame
+                    </button>
+                </div>
+                
+                <div class="thumbnail-grid" id="thumbnailGrid"></div>
+            </div>
+        </div>
+        
+        <div style="text-align: center; margin-top: 30px;">
+            <script async="async" data-cfasync="false" src="//breachuptown.com/6f/78/04/6f780474eb2a9dd7858efa9f1093bfff.js"></script>
+        </div>
+    </div>
+    
+    <canvas id="canvas"></canvas>
+    
+    <script>
+        let video = document.getElementById('videoPlayer');
+        let canvas = document.getElementById('canvas');
+        let ctx = canvas.getContext('2d');
+        
+        function handleVideoUpload(event) {
+            const file = event.target.files[0];
+            if (file) {
+                video.src = URL.createObjectURL(file);
+                document.getElementById('videoPreview').classList.add('active');
+                video.onloadedmetadata = () => {
+                    document.getElementById('timeSlider').max = video.duration;
+                };
+            }
+        }
+        
+        function seekVideo() {
+            const time = document.getElementById('timeSlider').value;
+            video.currentTime = time;
+            const m = Math.floor(time / 60);
+            const s = Math.floor(time % 60);
+            document.getElementById('timeDisplay').textContent = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+        }
+        
+        function captureFrame(time) {
+            return new Promise((resolve) => {
+                video.currentTime = time;
+                video.onseeked = () => {
+                    const resolution = document.getElementById('resolution').value;
+                    let width = video.videoWidth;
+                    let height = video.videoHeight;
+                    
+                    if (resolution !== 'original') {
+                        const [w, h] = resolution.split('x').map(Number);
+                        const ratio = Math.min(w / width, h / height);
+                        width = width * ratio;
+                        height = height * ratio;
+                    }
+                    
+                    canvas.width = width;
+                    canvas.height = height;
+                    ctx.drawImage(video, 0, 0, width, height);
+                    
+                    const format = document.getElementById('format').value;
+                    const mimeType = format === 'png' ? 'image/png' : format === 'jpeg' ? 'image/jpeg' : 'image/webp';
+                    resolve(canvas.toDataURL(mimeType, 0.95));
+                };
+            });
+        }
+        
+        async function captureCurrentFrame() {
+            const dataUrl = await captureFrame(video.currentTime);
+            addThumbnailToGrid(dataUrl, video.currentTime);
+        }
+        
+        async function generateAutoThumbnails() {
+            document.getElementById('thumbnailGrid').innerHTML = '';
+            const duration = video.duration;
+            const interval = duration / 6;
+            
+            for (let i = 1; i <= 5; i++) {
+                const time = interval * i;
+                const dataUrl = await captureFrame(time);
+                addThumbnailToGrid(dataUrl, time);
+            }
+        }
+        
+        function addThumbnailToGrid(dataUrl, time) {
+            const grid = document.getElementById('thumbnailGrid');
+            const item = document.createElement('div');
+            item.className = 'thumbnail-item';
+            item.innerHTML = `<canvas></canvas><div class="thumbnail-time">${formatTime(time)}</div>`;
+            
+            const img = new Image();
+            img.onload = () => {
+                const thumbCanvas = item.querySelector('canvas');
+                thumbCanvas.width = img.width;
+                thumbCanvas.height = img.height;
+                thumbCanvas.getContext('2d').drawImage(img, 0, 0);
+                thumbCanvas.style.display = 'block';
+            };
+            img.src = dataUrl;
+            
+            item.onclick = () => {
+                const link = document.createElement('a');
+                link.download = `thumbnail_${formatTime(time).replace(':', '-')}.${document.getElementById('format').value}`;
+                link.href = dataUrl;
+                link.click();
+            };
+            grid.appendChild(item);
+        }
+        
+        function formatTime(seconds) {
+            const m = Math.floor(seconds / 60);
+            const s = Math.floor(seconds % 60);
+            return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+        }
+    </script>
+</body>
+</html>

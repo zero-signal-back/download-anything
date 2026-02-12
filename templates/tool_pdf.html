@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Tools - Do Anything</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+        .tool-container { max-width: 900px; margin: 40px auto; padding: 30px; background: white; border-radius: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.1); }
+        .tool-header { text-align: center; margin-bottom: 30px; }
+        .tool-header h1 { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 36px; margin-bottom: 10px; }
+        .tool-tabs { display: flex; gap: 10px; margin-bottom: 30px; }
+        .tab-btn { flex: 1; padding: 15px; background: #f8f9fa; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; transition: all 0.3s; }
+        .tab-btn.active { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .upload-box { border: 3px dashed #f5576c; border-radius: 15px; padding: 40px 20px; text-align: center; cursor: pointer; transition: all 0.3s; background: rgba(245, 87, 108, 0.05); }
+        .upload-box:hover { background: rgba(245, 87, 108, 0.1); }
+        .upload-icon { font-size: 50px; color: #f5576c; margin-bottom: 15px; }
+        .file-list { margin: 20px 0; }
+        .file-item { background: #f8f9fa; padding: 15px; border-radius: 10px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+        .btn { padding: 12px 30px; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 5px 20px rgba(245, 87, 108, 0.4); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .status-box { margin-top: 20px; padding: 15px; border-radius: 10px; display: none; }
+        .status-box.active { display: block; }
+        .status-box.processing { background: #fff3cd; color: #856404; }
+        .status-box.success { background: #d4edda; color: #155724; }
+        .back-link { display: inline-block; margin-bottom: 20px; color: #f5576c; text-decoration: none; font-weight: 600; }
+    </style>
+</head>
+<body>
+    <script async="async" data-cfasync="false" src="//breachuptown.com/6f/78/04/6f780474eb2a9dd7858efa9f1093bfff.js"></script>
+    <div class="container">
+        <a href="/do-anything" class="back-link"><i class="fas fa-arrow-left"></i> Back to Tools</a>
+        
+        <div class="tool-container">
+            <div class="tool-header">
+                <h1><i class="fas fa-file-pdf"></i> PDF Tools</h1>
+                <p>Merge, split, and compress PDFs in your browser</p>
+            </div>
+            
+            <div class="tool-tabs">
+                <button class="tab-btn active" onclick="switchTab('merge')">Merge</button>
+                <button class="tab-btn" onclick="switchTab('split')">Split</button>
+                <button class="tab-btn" onclick="switchTab('compress')">Compress</button>
+                <button class="tab-btn" onclick="switchTab('pdf2img')">PDF to Images</button>
+                <button class="tab-btn" onclick="switchTab('img2pdf')">Images to PDF</button>
+            </div>
+            
+            <div id="merge" class="tab-content active">
+                <div class="upload-box" onclick="document.getElementById('mergeFiles').click()">
+                    <input type="file" id="mergeFiles" accept=".pdf" multiple style="display:none" onchange="handleMergeFiles(event)">
+                    <div class="upload-icon"><i class="fas fa-file-pdf"></i></div>
+                    <h3>Upload PDFs to Merge</h3>
+                    <p>Select multiple PDF files</p>
+                </div>
+                <div class="file-list" id="mergeList"></div>
+                <button class="btn" onclick="mergePDFs()" style="width:100%; margin-top:20px;">
+                    <i class="fas fa-compress-arrows-alt"></i> Merge PDFs
+                </button>
+            </div>
+            
+            <div id="split" class="tab-content">
+                <div class="upload-box" onclick="document.getElementById('splitFile').click()">
+                    <input type="file" id="splitFile" accept=".pdf" style="display:none" onchange="handleSplitFile(event)">
+                    <div class="upload-icon"><i class="fas fa-file-pdf"></i></div>
+                    <h3>Upload PDF to Split</h3>
+                    <p>Select a PDF file</p>
+                </div>
+                <div style="margin:20px 0;">
+                    <label>Page Range (e.g., 1-3, 5, 7-9):</label>
+                    <input type="text" id="pageRange" placeholder="1-3, 5, 7-9" style="width:100%; padding:12px; border:2px solid #e0e0e0; border-radius:10px; margin-top:10px;">
+                </div>
+                <button class="btn" onclick="splitPDF()" style="width:100%;">
+                    <i class="fas fa-cut"></i> Split PDF
+                </button>
+            </div>
+            
+            <div id="compress" class="tab-content">
+                <div class="upload-box" onclick="document.getElementById('compressFile').click()">
+                    <input type="file" id="compressFile" accept=".pdf" style="display:none" onchange="handleCompressFile(event)">
+                    <div class="upload-icon"><i class="fas fa-file-pdf"></i></div>
+                    <h3>Upload PDF to Compress</h3>
+                    <p>Reduce PDF file size</p>
+                </div>
+                <button class="btn" onclick="compressPDF()" style="width:100%; margin-top:20px;">
+                    <i class="fas fa-compress"></i> Compress PDF
+                </button>
+            </div>
+            
+            <div id="pdf2img" class="tab-content">
+                <div class="upload-box" onclick="document.getElementById('pdf2imgFile').click()">
+                    <input type="file" id="pdf2imgFile" accept=".pdf" style="display:none" onchange="handlePdf2ImgFile(event)">
+                    <div class="upload-icon"><i class="fas fa-file-pdf"></i></div>
+                    <h3>Upload PDF to Convert</h3>
+                    <p>Convert PDF pages to images</p>
+                </div>
+                <div style="margin:20px 0;">
+                    <label>Image Format:</label>
+                    <select id="imgFormat" style="width:100%; padding:12px; border:2px solid #e0e0e0; border-radius:10px; margin-top:10px;">
+                        <option value="png">PNG (Best Quality)</option>
+                        <option value="jpeg">JPEG (Smaller Size)</option>
+                    </select>
+                </div>
+                <button class="btn" onclick="convertPdfToImages()" style="width:100%;">
+                    <i class="fas fa-images"></i> Convert to Images
+                </button>
+            </div>
+            
+            <div id="img2pdf" class="tab-content">
+                <div class="upload-box" onclick="document.getElementById('img2pdfFiles').click()">
+                    <input type="file" id="img2pdfFiles" accept="image/*" multiple style="display:none" onchange="handleImg2PdfFiles(event)">
+                    <div class="upload-icon"><i class="fas fa-images"></i></div>
+                    <h3>Upload Images to Convert</h3>
+                    <p>Select multiple images</p>
+                </div>
+                <div class="file-list" id="img2pdfList"></div>
+                <button class="btn" onclick="convertImagesToPdf()" style="width:100%; margin-top:20px;">
+                    <i class="fas fa-file-pdf"></i> Convert to PDF
+                </button>
+            </div>
+            
+            <div class="status-box" id="statusBox"></div>
+        </div>
+        
+        <div style="text-align: center; margin-top: 30px;">
+            <script async="async" data-cfasync="false" src="//breachuptown.com/6f/78/04/6f780474eb2a9dd7858efa9f1093bfff.js"></script>
+        </div>
+    </div>
+    
+    <script>
+        const { PDFDocument } = PDFLib;
+        let mergeFilesArray = [];
+        let splitFileData = null;
+        let compressFileData = null;
+        
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById(tab).classList.add('active');
+        }
+        
+        function handleMergeFiles(event) {
+            mergeFilesArray = Array.from(event.target.files);
+            const list = document.getElementById('mergeList');
+            list.innerHTML = mergeFilesArray.map((f, i) => `
+                <div class="file-item">
+                    <span><i class="fas fa-file-pdf"></i> ${f.name}</span>
+                    <button onclick="removeFile(${i})" style="background:#dc3545; color:white; border:none; padding:8px 15px; border-radius:5px; cursor:pointer;">Remove</button>
+                </div>
+            `).join('');
+        }
+        
+        function removeFile(index) {
+            mergeFilesArray.splice(index, 1);
+            handleMergeFiles({ target: { files: mergeFilesArray } });
+        }
+        
+        async function mergePDFs() {
+            if (mergeFilesArray.length < 2) { alert('Please select at least 2 PDFs'); return; }
+            const statusBox = document.getElementById('statusBox');
+            statusBox.className = 'status-box active processing';
+            statusBox.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Merging PDFs...';
+            
+            try {
+                const mergedPdf = await PDFDocument.create();
+                for (const file of mergeFilesArray) {
+                    const arrayBuffer = await file.arrayBuffer();
+                    const pdf = await PDFDocument.load(arrayBuffer);
+                    const pages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
+                    pages.forEach(page => mergedPdf.addPage(page));
+                }
+                const pdfBytes = await mergedPdf.save();
+                downloadPDF(pdfBytes, 'merged.pdf');
+                statusBox.className = 'status-box active success';
+                statusBox.innerHTML = '<i class="fas fa-check-circle"></i> PDFs merged successfully!';
+            } catch (error) {
+                statusBox.className = 'status-box active error';
+                statusBox.innerHTML = '<i class="fas fa-exclamation-circle"></i> Error: ' + error.message;
+            }
+        }
+        
+        function handleSplitFile(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => { splitFileData = e.target.result; };
+                reader.readAsArrayBuffer(file);
+            }
+        }
+        
+        async function splitPDF() {
+            if (!splitFileData) { alert('Please select a PDF'); return; }
+            const range = document.getElementById('pageRange').value;
+            if (!range) { alert('Please enter page range'); return; }
+            
+            const statusBox = document.getElementById('statusBox');
+            statusBox.className = 'status-box active processing';
+            statusBox.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Splitting PDF...';
+            
+            try {
+                const pdf = await PDFDocument.load(splitFileData);
+                const newPdf = await PDFDocument.create();
+                const pages = parsePageRange(range, pdf.getPageCount());
+                
+                for (const pageNum of pages) {
+                    const [page] = await newPdf.copyPages(pdf, [pageNum - 1]);
+                    newPdf.addPage(page);
+                }
+                
+                const pdfBytes = await newPdf.save();
+                downloadPDF(pdfBytes, 'split.pdf');
+                statusBox.className = 'status-box active success';
+                statusBox.innerHTML = '<i class="fas fa-check-circle"></i> PDF split successfully!';
+            } catch (error) {
+                statusBox.className = 'status-box active error';
+                statusBox.innerHTML = '<i class="fas fa-exclamation-circle"></i> Error: ' + error.message;
+            }
+        }
+        
+        function parsePageRange(range, maxPages) {
+            const pages = new Set();
+            range.split(',').forEach(part => {
+                part = part.trim();
+                if (part.includes('-')) {
+                    const [start, end] = part.split('-').map(Number);
+                    for (let i = start; i <= end && i <= maxPages; i++) pages.add(i);
+                } else {
+                    const num = Number(part);
+                    if (num <= maxPages) pages.add(num);
+                }
+            });
+            return Array.from(pages).sort((a, b) => a - b);
+        }
+        
+        function handleCompressFile(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => { compressFileData = e.target.result; };
+                reader.readAsArrayBuffer(file);
+            }
+        }
+        
+        async function compressPDF() {
+            if (!compressFileData) { alert('Please select a PDF'); return; }
+            const statusBox = document.getElementById('statusBox');
+            statusBox.className = 'status-box active processing';
+            statusBox.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Compressing PDF...';
+            
+            try {
+                const pdf = await PDFDocument.load(compressFileData);
+                const pdfBytes = await pdf.save({ useObjectStreams: false });
+                downloadPDF(pdfBytes, 'compressed.pdf');
+                statusBox.className = 'status-box active success';
+                statusBox.innerHTML = '<i class="fas fa-check-circle"></i> PDF compressed!';
+            } catch (error) {
+                statusBox.className = 'status-box active error';
+                statusBox.innerHTML = '<i class="fas fa-exclamation-circle"></i> Error: ' + error.message;
+            }
+        }
+        
+        function downloadPDF(pdfBytes, filename) {
+            const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = filename;
+            link.click();
+        }
+        
+        let pdf2imgFileData = null;
+        let img2pdfFilesArray = [];
+        
+        function handlePdf2ImgFile(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => { pdf2imgFileData = e.target.result; };
+                reader.readAsArrayBuffer(file);
+            }
+        }
+        
+        async function convertPdfToImages() {
+            if (!pdf2imgFileData) { alert('Please select a PDF'); return; }
+            const statusBox = document.getElementById('statusBox');
+            statusBox.className = 'status-box active processing';
+            statusBox.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Converting PDF to images...';
+            
+            try {
+                pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+                const pdf = await pdfjsLib.getDocument({data: pdf2imgFileData}).promise;
+                const format = document.getElementById('imgFormat').value;
+                const zip = new JSZip();
+                
+                for (let i = 1; i <= pdf.numPages; i++) {
+                    const page = await pdf.getPage(i);
+                    const viewport = page.getViewport({scale: 2});
+                    const canvas = document.createElement('canvas');
+                    canvas.width = viewport.width;
+                    canvas.height = viewport.height;
+                    await page.render({canvasContext: canvas.getContext('2d'), viewport}).promise;
+                    const blob = await new Promise(resolve => canvas.toBlob(resolve, `image/${format}`));
+                    zip.file(`page_${i}.${format}`, blob);
+                }
+                
+                const zipBlob = await zip.generateAsync({type: 'blob'});
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(zipBlob);
+                link.download = 'pdf_images.zip';
+                link.click();
+                
+                statusBox.className = 'status-box active success';
+                statusBox.innerHTML = '<i class="fas fa-check-circle"></i> PDF converted to images!';
+            } catch (error) {
+                statusBox.className = 'status-box active error';
+                statusBox.innerHTML = '<i class="fas fa-exclamation-circle"></i> Error: ' + error.message;
+            }
+        }
+        
+        function handleImg2PdfFiles(event) {
+            img2pdfFilesArray = Array.from(event.target.files);
+            const list = document.getElementById('img2pdfList');
+            list.innerHTML = img2pdfFilesArray.map((f, i) => `
+                <div class="file-item">
+                    <span><i class="fas fa-image"></i> ${f.name}</span>
+                    <button onclick="removeImg2PdfFile(${i})" style="background:#dc3545; color:white; border:none; padding:8px 15px; border-radius:5px; cursor:pointer;">Remove</button>
+                </div>
+            `).join('');
+        }
+        
+        function removeImg2PdfFile(index) {
+            img2pdfFilesArray.splice(index, 1);
+            handleImg2PdfFiles({ target: { files: img2pdfFilesArray } });
+        }
+        
+        async function convertImagesToPdf() {
+            if (img2pdfFilesArray.length === 0) { alert('Please select images'); return; }
+            const statusBox = document.getElementById('statusBox');
+            statusBox.className = 'status-box active processing';
+            statusBox.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Converting images to PDF...';
+            
+            try {
+                const pdfDoc = await PDFDocument.create();
+                
+                for (const file of img2pdfFilesArray) {
+                    const arrayBuffer = await file.arrayBuffer();
+                    let img;
+                    if (file.type === 'image/png') {
+                        img = await pdfDoc.embedPng(arrayBuffer);
+                    } else {
+                        img = await pdfDoc.embedJpg(arrayBuffer);
+                    }
+                    const page = pdfDoc.addPage([img.width, img.height]);
+                    page.drawImage(img, { x: 0, y: 0, width: img.width, height: img.height });
+                }
+                
+                const pdfBytes = await pdfDoc.save();
+                downloadPDF(pdfBytes, 'images.pdf');
+                statusBox.className = 'status-box active success';
+                statusBox.innerHTML = '<i class="fas fa-check-circle"></i> Images converted to PDF!';
+            } catch (error) {
+                statusBox.className = 'status-box active error';
+                statusBox.innerHTML = '<i class="fas fa-exclamation-circle"></i> Error: ' + error.message;
+            }
+        }
+    </script>
+</body>
+</html>

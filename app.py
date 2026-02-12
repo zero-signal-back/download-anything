@@ -113,6 +113,22 @@ def tool_convert():
 def tool_rotate():
     return render_template('tool_rotate.html')
 
+@app.route('/tool/thumbnail-generator')
+def tool_thumbnail():
+    return render_template('tool_thumbnail.html')
+
+@app.route('/tool/subtitle-downloader')
+def tool_subtitle():
+    return render_template('tool_subtitle.html')
+
+@app.route('/tool/pdf-tools')
+def tool_pdf():
+    return render_template('tool_pdf.html')
+
+@app.route('/tool/qr-generator')
+def tool_qr():
+    return render_template('tool_qr.html')
+
 @app.route('/download', methods=['POST'])
 @rate_limit
 def download():
@@ -232,6 +248,12 @@ def remove_watermark():
         upload_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         video.save(upload_path)
         
+        # Check file size (max 50MB for free tier)
+        file_size = os.path.getsize(upload_path)
+        if file_size > 50 * 1024 * 1024:
+            os.remove(upload_path)
+            return jsonify({'success': False, 'error': 'Video too large (max 50MB on free tier)'}), 400
+        
         if watermark_type == 'tiktok':
             result = video_tools.remove_tiktok_watermark(upload_path)
         elif watermark_type == 'instagram':
@@ -246,6 +268,8 @@ def remove_watermark():
         os.remove(upload_path)
         return jsonify({'success': True, 'filename': result})
     except Exception as e:
+        if os.path.exists(upload_path):
+            os.remove(upload_path)
         app.logger.error(f"Watermark removal error: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
@@ -363,6 +387,26 @@ def rotate_video():
         return jsonify({'success': True, 'filename': result})
     except Exception as e:
         app.logger.error(f"Rotation error: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/download-subtitle', methods=['POST'])
+@rate_limit
+def download_subtitle():
+    data = request.json
+    url = data.get('url', '').strip()
+    format_type = data.get('format', 'srt')
+    
+    if not validate_url(url):
+        return jsonify({'success': False, 'error': 'Invalid YouTube URL'}), 400
+    
+    try:
+        result = download_manager.download_subtitles(url, format_type)
+        if result:
+            return jsonify({'success': True, 'subtitles': result})
+        else:
+            return jsonify({'success': False, 'error': 'No subtitles found'}), 404
+    except Exception as e:
+        app.logger.error(f"Subtitle download error: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.errorhandler(413)

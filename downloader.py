@@ -712,3 +712,49 @@ class DownloadManager:
                     f.write(chunk)
         
         return filename
+    
+    def download_subtitles(self, url, format_type='srt'):
+        """Download subtitles from YouTube"""
+        try:
+            ydl_opts = {
+                'skip_download': True,
+                'writesubtitles': True,
+                'writeautomaticsub': True,
+                'subtitlesformat': format_type,
+                'quiet': True,
+            }
+            
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(url, download=False)
+                
+                if not info:
+                    return None
+                
+                subtitles = []
+                
+                # Get available subtitles
+                if 'subtitles' in info and info['subtitles']:
+                    for lang, subs in info['subtitles'].items():
+                        for sub in subs:
+                            if sub.get('url'):
+                                subtitles.append({
+                                    'language': lang,
+                                    'url': sub['url'],
+                                    'ext': sub.get('ext', format_type)
+                                })
+                
+                # Get automatic captions if no manual subtitles
+                if not subtitles and 'automatic_captions' in info and info['automatic_captions']:
+                    for lang, subs in info['automatic_captions'].items():
+                        for sub in subs:
+                            if sub.get('url'):
+                                subtitles.append({
+                                    'language': f"{lang} (auto)",
+                                    'url': sub['url'],
+                                    'ext': sub.get('ext', format_type)
+                                })
+                
+                return subtitles if subtitles else None
+                
+        except Exception as e:
+            raise Exception(f"Subtitle download failed: {str(e)}")

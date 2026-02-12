@@ -1,0 +1,27 @@
+# UPDATE PATTERN FOR ALL TOOL PAGES
+# Add these 3 things to each tool page:
+
+## 1. IN <head> SECTION - Add FFmpeg.wasm + video-tools.js:
+<script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.6/dist/umd/ffmpeg.js"></script>
+<script src="{{ url_for('static', filename='video-tools.js') }}"></script>
+
+## 2. AFTER <body> TAG - Add Adsterra script:
+<body>
+    <script async="async" data-cfasync="false" src="//breachuptown.com/6f/78/04/6f780474eb2a9dd7858efa9f1093bfff.js"></script>
+
+## 3. BEFORE </body> TAG - Add Adsterra banner:
+    <!-- Ad Banner -->
+    <div style="text-align: center; margin-top: 30px;">
+        <script async="async" data-cfasync="false" src="//breachuptown.com/6f/78/04/6f780474eb2a9dd7858efa9f1093bfff.js"></script>
+    </div>
+</body>
+
+## 4. UPDATE JavaScript - Replace processVideo() function with universal fallback
+
+PAGES TO UPDATE:
+- tool_watermark.html ✓
+- tool_gif.html ✓ (already done)
+- tool_compress.html
+- tool_convert.html  
+- tool_rotate.html
+- do_anything.html (hub page)

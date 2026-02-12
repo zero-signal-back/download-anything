@@ -6,6 +6,8 @@
     <title>Video to GIF - Do Anything</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.6/dist/umd/ffmpeg.js"></script>
+    <script src="{{ url_for('static', filename='video-tools.js') }}"></script>
     <style>
         .tool-container { max-width: 700px; margin: 40px auto; padding: 30px; background: white; border-radius: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.1); }
         .tool-header { text-align: center; margin-bottom: 30px; }
@@ -79,11 +81,14 @@
     
     <script>
         let selectedFile = null;
+        let resultBlob = null;
+        let resultFilename = '';
         
         function handleFileSelect(event) {
             selectedFile = event.target.files[0];
             if (selectedFile) {
-                document.querySelector('.upload-box h3').textContent = '✓ ' + selectedFile.name;
+                const sizeMB = (selectedFile.size / 1024 / 1024).toFixed(1);
+                document.querySelector('.upload-box h3').textContent = `✓ ${selectedFile.name} (${sizeMB}MB)`;
                 document.getElementById('optionsPanel').classList.add('active');
             }
         }
@@ -95,25 +100,30 @@
             const btn = event.target;
             
             statusBox.className = 'status-box active processing';
-            statusBox.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Converting to GIF... Please wait.';
+            statusBox.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Starting...';
             btn.disabled = true;
             
-            const formData = new FormData();
-            formData.append('video', selectedFile);
-            formData.append('start', document.getElementById('startTime').value);
-            formData.append('duration', document.getElementById('duration').value);
-            formData.append('fps', document.getElementById('fps').value);
-            
             try {
-                const response = await fetch('/video-to-gif', { method: 'POST', body: formData });
-                const data = await response.json();
+                const options = {
+                    start: document.getElementById('startTime').value,
+                    duration: document.getElementById('duration').value,
+                    fps: document.getElementById('fps').value
+                };
                 
-                if (data.success) {
+                const result = await processVideoUniversal(selectedFile, 'gif', options, (type, msg) => {
+                    statusBox.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${msg}`;
+                });
+                
+                if (result.blob) {
+                    // Client-side result
+                    resultBlob = result.blob;
+                    resultFilename = result.filename;
                     statusBox.className = 'status-box active success';
-                    statusBox.innerHTML = `<i class="fas fa-check-circle"></i> GIF created successfully!<br><a href="/download-file/${data.filename}" class="download-btn" download><i class="fas fa-download"></i> Download GIF</a>`;
+                    statusBox.innerHTML = `<i class="fas fa-check-circle"></i> GIF created! (Browser processed)<br><button class="download-btn" onclick="downloadBlob(resultBlob, resultFilename)"><i class="fas fa-download"></i> Download GIF</button>`;
                 } else {
-                    statusBox.className = 'status-box active error';
-                    statusBox.innerHTML = `<i class="fas fa-exclamation-circle"></i> Error: ${data.error}`;
+                    // Server-side result
+                    statusBox.className = 'status-box active success';
+                    statusBox.innerHTML = `<i class="fas fa-check-circle"></i> GIF created!<br><a href="/download-file/${result.filename}" class="download-btn" download><i class="fas fa-download"></i> Download GIF</a>`;
                 }
             } catch (error) {
                 statusBox.className = 'status-box active error';

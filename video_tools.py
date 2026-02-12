@@ -27,14 +27,17 @@ class VideoTools:
         cmd = [
             self.ffmpeg, '-y', '-i', video_path,
             '-vf', f'delogo=x={x}:y={y}:w={width}:h={height}',
-            '-c:v', 'libx264', '-preset', 'fast',
+            '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '28',
             '-c:a', 'copy',
+            '-max_muxing_queue_size', '1024',
             output_path
         ]
         
         try:
-            result = subprocess.run(cmd, check=True, capture_output=True, text=True)
+            result = subprocess.run(cmd, check=True, capture_output=True, text=True, timeout=180)
             return output_filename
+        except subprocess.TimeoutExpired:
+            raise Exception("Processing timeout - video too large for free tier")
         except subprocess.CalledProcessError as e:
             error_msg = e.stderr if e.stderr else str(e)
             raise Exception(f"FFmpeg error: {error_msg[:200]}")
@@ -56,14 +59,16 @@ class VideoTools:
         cmd = [
             self.ffmpeg, '-y', '-ss', str(start_time), '-t', str(duration),
             '-i', video_path,
-            '-vf', f'fps={fps},scale=480:-1:flags=lanczos',
+            '-vf', f'fps={fps},scale=320:-1:flags=lanczos',
             '-loop', '0',
             output_path
         ]
         
         try:
-            subprocess.run(cmd, check=True, capture_output=True, text=True)
+            subprocess.run(cmd, check=True, capture_output=True, text=True, timeout=120)
             return output_filename
+        except subprocess.TimeoutExpired:
+            raise Exception("Processing timeout - video too large")
         except subprocess.CalledProcessError as e:
             error_msg = e.stderr if e.stderr else str(e)
             raise Exception(f"FFmpeg error: {error_msg[:200]}")
@@ -81,15 +86,18 @@ class VideoTools:
             self.ffmpeg, '-y', '-i', video_path,
             '-vcodec', 'libx264',
             '-crf', crf,
-            '-preset', 'fast',
+            '-preset', 'ultrafast',
             '-acodec', 'aac',
-            '-b:a', '128k',
+            '-b:a', '96k',
+            '-max_muxing_queue_size', '1024',
             output_path
         ]
         
         try:
-            subprocess.run(cmd, check=True, capture_output=True, text=True)
+            subprocess.run(cmd, check=True, capture_output=True, text=True, timeout=180)
             return output_filename
+        except subprocess.TimeoutExpired:
+            raise Exception("Processing timeout - video too large")
         except subprocess.CalledProcessError as e:
             error_msg = e.stderr if e.stderr else str(e)
             raise Exception(f"FFmpeg error: {error_msg[:200]}")
@@ -102,15 +110,17 @@ class VideoTools:
         
         cmd = [
             self.ffmpeg, '-y', '-i', video_path,
-            '-c:v', 'libx264',
+            '-c:v', 'libx264', '-preset', 'ultrafast',
             '-c:a', 'aac',
-            '-strict', 'experimental',
+            '-max_muxing_queue_size', '1024',
             output_path
         ]
         
         try:
-            subprocess.run(cmd, check=True, capture_output=True, text=True)
+            subprocess.run(cmd, check=True, capture_output=True, text=True, timeout=180)
             return output_filename
+        except subprocess.TimeoutExpired:
+            raise Exception("Processing timeout - video too large")
         except subprocess.CalledProcessError as e:
             error_msg = e.stderr if e.stderr else str(e)
             raise Exception(f"FFmpeg error: {error_msg[:200]}")
@@ -134,14 +144,17 @@ class VideoTools:
         cmd = [
             self.ffmpeg, '-y', '-i', video_path,
             '-vf', vf,
-            '-c:v', 'libx264', '-preset', 'fast',
+            '-c:v', 'libx264', '-preset', 'ultrafast',
             '-c:a', 'copy',
+            '-max_muxing_queue_size', '1024',
             output_path
         ]
         
         try:
-            subprocess.run(cmd, check=True, capture_output=True, text=True)
+            subprocess.run(cmd, check=True, capture_output=True, text=True, timeout=180)
             return output_filename
+        except subprocess.TimeoutExpired:
+            raise Exception("Processing timeout - video too large")
         except subprocess.CalledProcessError as e:
             error_msg = e.stderr if e.stderr else str(e)
             raise Exception(f"FFmpeg error: {error_msg[:200]}")
