@@ -14,6 +14,9 @@ import random
 import subprocess
 from urllib.parse import urlparse
 import asyncio
+import time
+import hashlib
+import config
 try:
     from telethon import TelegramClient
     from telethon.tl.types import MessageMediaDocument, MessageMediaPhoto
@@ -26,6 +29,8 @@ class DownloadManager:
     def __init__(self, download_folder):
         self.download_folder = download_folder
         self.proxies = self.load_proxies()
+        self.max_retries = config.MAX_RETRIES
+        self.timeout = config.DOWNLOAD_TIMEOUT
         
     def load_proxies(self):
         proxies = []  # No default None
@@ -47,7 +52,29 @@ class DownloadManager:
     def get_random_proxy(self):
         return random.choice(self.proxies)
     
+    def sanitize_filename(self, filename):
+        """Remove invalid characters from filename"""
+        filename = re.sub(r'[<>:"/\\|?*]', '_', filename)
+        filename = filename[:200]  # Limit length
+        return filename
+    
+    def retry_download(self, func, *args, **kwargs):
+        """Retry download with exponential backoff"""
+        for attempt in range(self.max_retries):
+            try:
+                return func(*args, **kwargs)
+            except Exception as e:
+                if attempt == self.max_retries - 1:
+                    raise e
+                wait_time = 2 ** attempt
+                print(f"Retry {attempt + 1}/{self.max_retries} after {wait_time}s...")
+                time.sleep(wait_time)
+    
     def download(self, url, quality='best'):
+        url = url.strip()
+        if not url.startswith(('http://', 'https://')):
+            raise Exception("Invalid URL format")
+        
         domain = urlparse(url).netloc.lower()
         
         # YouTube
@@ -113,6 +140,9 @@ class DownloadManager:
             'format': f'bestvideo[height<={quality}]+bestaudio/best' if quality != 'best' else 'best',
             'outtmpl': os.path.join(self.download_folder, '%(title)s.%(ext)s'),
             'quiet': False,
+            'socket_timeout': self.timeout,
+            'retries': self.max_retries,
+            'fragment_retries': self.max_retries,
             'extractor_args': {
                 'youtube': {
                     'player_client': ['android', 'web'],
@@ -126,14 +156,13 @@ class DownloadManager:
             }
         }
         
-        # Only add proxy if it's not None
         if proxy:
             ydl_opts['proxy'] = proxy
         
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=True)
             filename = ydl.prepare_filename(info)
-            return os.path.basename(filename)
+            return self.sanitize_filename(os.path.basename(filename))
     
     def download_youtube(self, url, quality):
         proxy = self.get_random_proxy()
@@ -144,6 +173,9 @@ class DownloadManager:
             'merge_output_format': 'mp4',
             'quiet': False,
             'no_warnings': False,
+            'socket_timeout': self.timeout,
+            'retries': self.max_retries,
+            'fragment_retries': self.max_retries,
             'extractor_args': {
                 'youtube': {
                     'player_client': ['android', 'web'],
@@ -164,12 +196,10 @@ class DownloadManager:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=True)
             filename = ydl.prepare_filename(info)
-            return os.path.basename(filename)
+            return self.sanitize_filename(os.path.basename(filename))
     
     def download_dailymotion(self, url, quality):
         proxy = self.get_random_proxy()
-        
-        import time
         timestamp = int(time.time())
         
         ydl_opts = {
@@ -178,6 +208,8 @@ class DownloadManager:
             'quiet': False,
             'no_check_certificate': True,
             'geo_bypass': True,
+            'socket_timeout': self.timeout,
+            'retries': self.max_retries,
             'http_headers': {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
                 'Accept': '*/*',
@@ -192,10 +224,9 @@ class DownloadManager:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=True)
             filename = ydl.prepare_filename(info)
-            return os.path.basename(filename)
+            return self.sanitize_filename(os.path.basename(filename))
     
     def download_telegram(self, url, quality):
-        # Check if it's a private channel (/c/ in URL)
         if '/c/' in url and TELETHON_AVAILABLE:
             try:
                 return asyncio.run(self.download_telegram_private(url))
@@ -203,16 +234,15 @@ class DownloadManager:
                 print(f"Telethon failed: {e}")
                 raise Exception(f"Private Telegram channel requires authentication. Please configure telegram_config.py with your API credentials.")
         
-        # Public channels - use yt-dlp
         proxy = self.get_random_proxy()
-        
-        import time
         timestamp = int(time.time())
         
         ydl_opts = {
             'format': 'best',
             'outtmpl': os.path.join(self.download_folder, f'{timestamp}_%(title)s.%(ext)s'),
             'quiet': False,
+            'socket_timeout': self.timeout,
+            'retries': self.max_retries,
         }
         
         if proxy:
@@ -221,7 +251,7 @@ class DownloadManager:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=True)
             filename = ydl.prepare_filename(info)
-            return os.path.basename(filename)
+            return self.sanitize_filename(os.path.basename(filename))
     
     async def download_telegram_private(self, url):
         """Download from private Telegram channels using Telethon"""
@@ -285,7 +315,6 @@ class DownloadManager:
     
     def download_instagram_alternative(self, url):
         """Alternative Instagram download using multiple methods"""
-        import time
         timestamp = int(time.time())
         
         # Method 1: Try with cookies and different extractors
@@ -380,7 +409,6 @@ class DownloadManager:
     def download_instagram(self, url):
         """Download Instagram using yt-dlp (more reliable than instaloader)"""
         try:
-            import time
             timestamp = int(time.time())
             
             proxy = self.get_random_proxy()
@@ -636,8 +664,6 @@ class DownloadManager:
     def download_adult_site(self, url, quality):
         """Download from adult content sites with enhanced extraction"""
         proxy = self.get_random_proxy()
-        
-        import time
         timestamp = int(time.time())
         
         ydl_opts = {
@@ -697,17 +723,19 @@ class DownloadManager:
         
         filename = url.split('/')[-1].split('?')[0]
         if not filename or '.' not in filename:
-            filename = f"download_{hash(url)}.mp4"
+            filename = f"download_{hashlib.md5(url.encode()).hexdigest()[:8]}.mp4"
         
+        filename = self.sanitize_filename(filename)
         filepath = os.path.join(self.download_folder, filename)
         
-        response = requests.get(url, proxies=proxies, stream=True, headers={
+        response = requests.get(url, proxies=proxies, stream=True, timeout=self.timeout, headers={
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
         })
         response.raise_for_status()
         
         with open(filepath, 'wb') as f:
             for chunk in response.iter_content(chunk_size=8192):
-                f.write(chunk)
+                if chunk:
+                    f.write(chunk)
         
         return filename

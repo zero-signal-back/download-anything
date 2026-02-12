@@ -3,12 +3,13 @@ let progressInterval = null;
 let progressValue = 0;
 
 const statusMessages = [
-    'Fetching video info...',
+    'Initializing download...',
+    'Fetching video information...',
     'Extracting download link...',
     'Processing video...',
-    'Downloading...',
+    'Downloading content...',
     'Almost done...',
-    'Finalizing...'
+    'Finalizing download...'
 ];
 
 let messageIndex = 0;
@@ -45,8 +46,8 @@ async function startDownload() {
     const progressDiv = document.getElementById('progress');
     const downloadBtn = document.getElementById('downloadBtn');
     
-    // Remove old preview buttons if any
-    const oldPreview = document.querySelector('.preview-options');
+    // Remove old preview if any
+    const oldPreview = document.querySelector('.video-preview-section');
     if (oldPreview) oldPreview.remove();
     
     if (!url) {
@@ -55,9 +56,9 @@ async function startDownload() {
     }
     
     downloadBtn.disabled = true;
-    downloadBtn.textContent = 'Processing...';
+    downloadBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
     statusDiv.className = 'status processing';
-    statusDiv.textContent = 'Starting download...';
+    statusDiv.textContent = '⏳ Starting download...';
     statusDiv.classList.remove('hidden');
     progressDiv.classList.remove('hidden');
     
@@ -79,10 +80,11 @@ async function startDownload() {
         const data = await response.json();
         
         if (data.error) {
-            showStatus(data.error, 'error');
+            showStatus('❌ ' + data.error, 'error');
             downloadBtn.disabled = false;
-            downloadBtn.textContent = 'Download';
+            downloadBtn.innerHTML = '<span class="btn-text">Download Now</span><span class="btn-icon"><i class="fas fa-download"></i></span>';
             progressDiv.classList.add('hidden');
+            clearInterval(progressInterval);
             return;
         }
         
@@ -90,10 +92,11 @@ async function startDownload() {
         checkStatus(currentDownloadId);
         
     } catch (error) {
-        showStatus('Error: ' + error.message, 'error');
+        showStatus('❌ Error: ' + error.message, 'error');
         downloadBtn.disabled = false;
-        downloadBtn.textContent = 'Download';
+        downloadBtn.innerHTML = '<span class="btn-text">Download Now</span><span class="btn-icon"><i class="fas fa-download"></i></span>';
         progressDiv.classList.add('hidden');
+        clearInterval(progressInterval);
     }
 }
 
@@ -112,22 +115,58 @@ async function checkStatus(downloadId) {
             document.querySelector('.progress-percentage').textContent = '100%';
             document.querySelector('.progress-fill').style.width = '100%';
             
-            showStatus('✅ Download completed!', 'success');
+            showStatus('✅ Download completed successfully!', 'success');
             progressDiv.classList.add('hidden');
             downloadBtn.disabled = false;
-            downloadBtn.textContent = 'Download';
+            downloadBtn.innerHTML = '<span class="btn-text">Download Now</span><span class="btn-icon"><i class="fas fa-download"></i></span>';
             
-            // Show preview option
+            // Check if it's a video file
+            const videoExtensions = ['.mp4', '.mkv', '.webm', '.avi', '.mov', '.flv'];
+            const isVideo = videoExtensions.some(ext => data.file.toLowerCase().endsWith(ext));
+            
+            // Show video player with download button
             const previewDiv = document.createElement('div');
-            previewDiv.className = 'preview-options';
-            previewDiv.innerHTML = `
-                <a href="/file/${data.file}" target="_blank" class="preview-btn">
-                    <i class="fas fa-play-circle"></i> Preview/Play
-                </a>
-                <a href="/file/${data.file}" download class="download-btn-small">
-                    <i class="fas fa-download"></i> Download
-                </a>
-            `;
+            previewDiv.className = 'video-preview-section';
+            
+            if (isVideo) {
+                previewDiv.innerHTML = `
+                    <div class="video-player-container">
+                        <h3><i class="fas fa-play-circle"></i> Video Preview</h3>
+                        <video controls autoplay class="video-player">
+                            <source src="/file/${data.file}" type="video/mp4">
+                            Your browser does not support the video tag.
+                        </video>
+                    </div>
+                    <div class="download-actions">
+                        <a href="/file/${data.file}" download class="download-final-btn">
+                            <i class="fas fa-download"></i> Download Video
+                        </a>
+                        <button onclick="location.reload()" class="new-download-btn">
+                            <i class="fas fa-plus"></i> Download Another
+                        </button>
+                    </div>
+                `;
+            } else {
+                previewDiv.innerHTML = `
+                    <div class="file-ready-container">
+                        <div class="file-icon"><i class="fas fa-file-download"></i></div>
+                        <h3>File Ready!</h3>
+                        <p>Your file is ready to download</p>
+                    </div>
+                    <div class="download-actions">
+                        <a href="/file/${data.file}" download class="download-final-btn">
+                            <i class="fas fa-download"></i> Download File
+                        </a>
+                        <a href="/file/${data.file}" target="_blank" class="preview-final-btn">
+                            <i class="fas fa-eye"></i> Preview
+                        </a>
+                        <button onclick="location.reload()" class="new-download-btn">
+                            <i class="fas fa-plus"></i> Download Another
+                        </button>
+                    </div>
+                `;
+            }
+            
             statusDiv.after(previewDiv);
             
         } else if (data.status === 'error') {
@@ -135,7 +174,7 @@ async function checkStatus(downloadId) {
             showStatus('❌ Error: ' + data.message, 'error');
             progressDiv.classList.add('hidden');
             downloadBtn.disabled = false;
-            downloadBtn.textContent = 'Download';
+            downloadBtn.innerHTML = '<span class="btn-text">Download Now</span><span class="btn-icon"><i class="fas fa-download"></i></span>';
             
         } else if (data.status === 'processing') {
             statusDiv.textContent = '⏳ Downloading... Please wait';
@@ -143,18 +182,18 @@ async function checkStatus(downloadId) {
             
         } else {
             clearInterval(progressInterval);
-            showStatus('Unknown status', 'error');
+            showStatus('⚠️ Unknown status', 'error');
             progressDiv.classList.add('hidden');
             downloadBtn.disabled = false;
-            downloadBtn.textContent = 'Download';
+            downloadBtn.innerHTML = '<span class="btn-text">Download Now</span><span class="btn-icon"><i class="fas fa-download"></i></span>';
         }
         
     } catch (error) {
         clearInterval(progressInterval);
-        showStatus('Error checking status: ' + error.message, 'error');
+        showStatus('❌ Error checking status: ' + error.message, 'error');
         progressDiv.classList.add('hidden');
         downloadBtn.disabled = false;
-        downloadBtn.textContent = 'Download';
+        downloadBtn.innerHTML = '<span class="btn-text">Download Now</span><span class="btn-icon"><i class="fas fa-download"></i></span>';
     }
 }
 

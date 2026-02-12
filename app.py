@@ -2,57 +2,141 @@ from flask import Flask, render_template, request, jsonify, send_file
 from downloader import DownloadManager
 from username_checker import UsernameChecker
 from auto_proxy_updater import start_auto_updater
+import config
 import os
 import threading
+import time
+import re
+import logging
+from functools import wraps
+from collections import defaultdict
+from logging.handlers import RotatingFileHandler
 
 app = Flask(__name__)
 app.config['DOWNLOAD_FOLDER'] = 'downloads'
+app.config['MAX_CONTENT_LENGTH'] = config.MAX_DOWNLOAD_SIZE
 os.makedirs(app.config['DOWNLOAD_FOLDER'], exist_ok=True)
+os.makedirs('logs', exist_ok=True)
+
+# Setup logging
+if not config.DEBUG:
+    file_handler = RotatingFileHandler('logs/app.log', maxBytes=10240000, backupCount=10)
+    file_handler.setFormatter(logging.Formatter(
+        '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
+    ))
+    file_handler.setLevel(logging.INFO)
+    app.logger.addHandler(file_handler)
+    app.logger.setLevel(logging.INFO)
+    app.logger.info('Download Anything startup')
 
 download_manager = DownloadManager(app.config['DOWNLOAD_FOLDER'])
 username_checker = UsernameChecker()
 download_status = {}
 
+# Rate limiting
+request_counts = defaultdict(list)
+
+def rate_limit(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        ip = request.remote_addr
+        now = time.time()
+        
+        request_counts[ip] = [t for t in request_counts[ip] if now - t < config.RATE_LIMIT_WINDOW]
+        
+        if len(request_counts[ip]) >= config.MAX_REQUESTS_PER_MINUTE:
+            return jsonify({'error': 'Rate limit exceeded. Try again later.'}), 429
+        
+        request_counts[ip].append(now)
+        return f(*args, **kwargs)
+    return decorated_function
+
+def validate_url(url):
+    """Validate URL format"""
+    if not url or not isinstance(url, str):
+        return False
+    url = url.strip()
+    if not url.startswith(('http://', 'https://')):
+        return False
+    if len(url) > config.MAX_URL_LENGTH:
+        return False
+    return True
+
 @app.route('/')
 def index():
     return render_template('index.html')
+
+@app.route('/health')
+def health():
+    """Health check endpoint for monitoring"""
+    return jsonify({
+        'status': 'healthy',
+        'timestamp': time.time(),
+        'active_downloads': len([s for s in download_status.values() if s.get('status') == 'processing'])
+    })
+
+@app.route('/ping')
+def ping():
+    """Simple ping endpoint"""
+    return jsonify({'status': 'ok', 'message': 'pong'})
 
 @app.route('/username-finder')
 def username_finder():
     return render_template('username.html')
 
 @app.route('/download', methods=['POST'])
+@rate_limit
 def download():
     data = request.json
-    url = data.get('url')
+    url = data.get('url', '').strip()
     quality = data.get('quality', 'best')
     
-    if not url:
-        return jsonify({'error': 'URL required'}), 400
+    if not validate_url(url):
+        return jsonify({'error': 'Invalid URL format'}), 400
     
-    download_id = str(hash(url + str(threading.get_ident())))
+    # Validate quality
+    valid_qualities = ['best', '2160', '1440', '1080', '720', '480', '360']
+    if quality not in valid_qualities:
+        quality = 'best'
+    
+    download_id = str(hash(url + str(time.time())))
     download_status[download_id] = {'status': 'processing', 'progress': 0}
     
     def download_task():
         try:
+            app.logger.info(f"Starting download: {url[:100]}")
             result = download_manager.download(url, quality)
             if result:
-                download_status[download_id] = {'status': 'completed', 'file': result}
+                download_status[download_id] = {'status': 'completed', 'file': result, 'timestamp': time.time()}
+                app.logger.info(f"Download completed: {result}")
             else:
-                download_status[download_id] = {'status': 'error', 'message': 'Download failed - no file returned'}
+                download_status[download_id] = {'status': 'error', 'message': 'Download failed - no file returned', 'timestamp': time.time()}
+                app.logger.error(f"Download failed: no file returned for {url[:100]}")
         except Exception as e:
-            download_status[download_id] = {'status': 'error', 'message': str(e)}
+            error_msg = str(e)[:500]
+            download_status[download_id] = {'status': 'error', 'message': error_msg, 'timestamp': time.time()}
+            app.logger.error(f"Download error: {error_msg} for {url[:100]}")
     
-    thread = threading.Thread(target=download_task)
+    thread = threading.Thread(target=download_task, daemon=True)
     thread.start()
     
     return jsonify({'download_id': download_id})
 
 @app.route('/status/<download_id>')
 def status(download_id):
-    return jsonify(download_status.get(download_id, {'status': 'not_found'}))
+    status_data = download_status.get(download_id, {'status': 'not_found'})
+    
+    # Clean up completed/error downloads after 1 hour
+    if status_data.get('status') in ['completed', 'error']:
+        if 'timestamp' not in status_data:
+            status_data['timestamp'] = time.time()
+        elif time.time() - status_data['timestamp'] > 3600:
+            download_status.pop(download_id, None)
+    
+    return jsonify(status_data)
 
 @app.route('/search-username', methods=['POST'])
+@rate_limit
 def search_username():
     data = request.json
     username = data.get('username', '').strip()
@@ -60,33 +144,61 @@ def search_username():
     if not username:
         return jsonify({'error': 'Username required'}), 400
     
-    if len(username) < 2 or len(username) > 30:
-        return jsonify({'error': 'Username must be 2-30 characters'}), 400
+    # Validate username - allow alphanumeric, underscore, dot, hyphen
+    if not re.match(r'^[a-zA-Z0-9_.\-]{2,30}$', username):
+        return jsonify({'error': 'Invalid username format (2-30 chars, alphanumeric only)'}), 400
     
-    # Search username across platforms
     results = username_checker.search_username(username)
-    
     return jsonify(results)
 
 @app.route('/file/<path:filename>')
 def download_file(filename):
+    # Prevent path traversal
+    filename = os.path.basename(filename)
     filepath = os.path.join(app.config['DOWNLOAD_FOLDER'], filename)
-    if os.path.exists(filepath):
-        # Detect MIME type for proper preview
-        import mimetypes
-        mimetype = mimetypes.guess_type(filepath)[0]
-        
-        # For video files, use inline display instead of attachment
-        if mimetype and mimetype.startswith('video'):
-            return send_file(filepath, mimetype=mimetype)
-        else:
-            return send_file(filepath, as_attachment=True)
-    else:
+    
+    if not os.path.exists(filepath):
         return jsonify({'error': 'File not found'}), 404
+    
+    # Verify file is in download folder
+    if not os.path.abspath(filepath).startswith(os.path.abspath(app.config['DOWNLOAD_FOLDER'])):
+        return jsonify({'error': 'Access denied'}), 403
+    
+    import mimetypes
+    mimetype = mimetypes.guess_type(filepath)[0]
+    
+    if mimetype and mimetype.startswith('video'):
+        return send_file(filepath, mimetype=mimetype)
+    else:
+        return send_file(filepath, as_attachment=True)
+
+@app.errorhandler(413)
+def request_entity_too_large(error):
+    app.logger.warning(f"File too large from {request.remote_addr}")
+    return jsonify({'error': 'File too large'}), 413
+
+@app.errorhandler(500)
+def internal_error(error):
+    app.logger.error(f"Internal error: {error}")
+    return jsonify({'error': 'Internal server error'}), 500
+
+@app.errorhandler(404)
+def not_found(error):
+    return jsonify({'error': 'Not found'}), 404
 
 if __name__ == '__main__':
-    # Auto proxy updater disabled for stability
-    # Uncomment below to enable:
-    # start_auto_updater(interval_hours=6)
+    # Clean old downloads on startup
+    try:
+        cleanup_age = config.CLEANUP_AGE_HOURS * 3600
+        for f in os.listdir(app.config['DOWNLOAD_FOLDER']):
+            filepath = os.path.join(app.config['DOWNLOAD_FOLDER'], f)
+            if os.path.isfile(filepath):
+                file_age = time.time() - os.path.getmtime(filepath)
+                if file_age > cleanup_age:
+                    os.remove(filepath)
+                    print(f"Cleaned old file: {f}")
+    except Exception as e:
+        print(f"Cleanup error: {e}")
     
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    print(f"Starting server on {config.HOST}:{config.PORT}")
+    app.run(debug=config.DEBUG, host=config.HOST, port=config.PORT, threaded=config.THREADED)

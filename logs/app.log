@@ -1,0 +1,4 @@
+2026-02-12 21:15:12,810 INFO: Download Anything startup [in C:\Users\shado\OneDrive\downloadanything\download-anything\app.py:30]
+2026-02-12 21:30:20,457 INFO: Download Anything startup [in C:\Users\shado\OneDrive\downloadanything\download-anything\app.py:30]
+2026-02-12 21:31:51,163 INFO: Starting download: https://www.youtube.com/watch?v=dQw4w9WgXcQ [in C:\Users\shado\OneDrive\downloadanything\download-anything\app.py:107]
+2026-02-12 21:31:58,290 INFO: Download completed: Rick Astley - Never Gonna Give You Up (Official Video) (4K Remaster).mp4 [in C:\Users\shado\OneDrive\downloadanything\download-anything\app.py:111]

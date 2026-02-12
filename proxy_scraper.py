@@ -1,7 +1,7 @@
 import requests
 import re
 import time
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import socket
 
 class ProxyScraper:
@@ -25,7 +25,7 @@ class ProxyScraper:
             pass
         return []
     
-    def test_proxy(self, proxy, timeout=2):
+    def test_proxy(self, proxy, timeout=3):
         try:
             test_url = 'http://www.google.com'
             proxies = {
@@ -33,41 +33,39 @@ class ProxyScraper:
                 'https': f'http://{proxy}'
             }
             response = requests.get(test_url, proxies=proxies, timeout=timeout)
-            if response.status_code == 200:
-                return proxy
+            return proxy if response.status_code == 200 else None
         except:
-            pass
-        return None
+            return None
     
     def scrape_proxies(self, test=True, max_test=50):
         print("🔍 Fetching proxies from multiple sources...")
         all_proxies = []
         
-        with ThreadPoolExecutor(max_workers=5) as executor:
+        with ThreadPoolExecutor(max_workers=6) as executor:
             results = executor.map(self.fetch_from_source, self.sources)
             for result in results:
                 all_proxies.extend(result)
         
-        # Remove duplicates
         all_proxies = list(set(all_proxies))
         print(f"✅ Found {len(all_proxies)} unique proxies")
         
         if test and all_proxies:
             print(f"🧪 Testing proxies (max {max_test})...")
             working_proxies = []
-            
             test_proxies = all_proxies[:max_test]
-            with ThreadPoolExecutor(max_workers=20) as executor:
-                results = executor.map(self.test_proxy, test_proxies)
-                for result in results:
+            
+            with ThreadPoolExecutor(max_workers=30) as executor:
+                future_to_proxy = {executor.submit(self.test_proxy, proxy): proxy for proxy in test_proxies}
+                for future in as_completed(future_to_proxy):
+                    result = future.result()
                     if result:
                         working_proxies.append(result)
                         print(f"✓ Working: {result}")
             
             print(f"✅ {len(working_proxies)} working proxies found")
-            return working_proxies
+            return working_proxies if working_proxies else [None]
         
-        return all_proxies
+        return all_proxies if all_proxies else [None]
     
     def save_proxies(self, proxies, filename='proxies.txt'):
         with open(filename, 'w') as f:
@@ -80,15 +78,15 @@ class ProxyScraper:
 
 def main():
     scraper = ProxyScraper()
-    
-    # Fetch and test proxies
     proxies = scraper.scrape_proxies(test=True, max_test=100)
     
-    if proxies:
+    if proxies and proxies != [None]:
         scraper.save_proxies(proxies)
         print("\n✅ Proxy list updated successfully!")
     else:
-        print("\n❌ No working proxies found. Using direct connection.")
+        print("\n⚠️ No working proxies found. Using direct connection.")
+        with open('proxies.txt', 'w') as f:
+            f.write("# No proxies available - using direct connection\n")
 
 if __name__ == '__main__':
     main()
