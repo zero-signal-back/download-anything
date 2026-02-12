@@ -42,6 +42,7 @@ function updateProgressAnimation() {
 async function startDownload() {
     const url = document.getElementById('urlInput').value.trim();
     const quality = document.getElementById('qualitySelect').value;
+    const format = document.getElementById('formatSelect').value;
     const statusDiv = document.getElementById('status');
     const progressDiv = document.getElementById('progress');
     const downloadBtn = document.getElementById('downloadBtn');
@@ -55,10 +56,12 @@ async function startDownload() {
         return;
     }
     
+    const audio_only = (format === 'audio');
+    
     downloadBtn.disabled = true;
     downloadBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
     statusDiv.className = 'status processing';
-    statusDiv.textContent = '⏳ Starting download...';
+    statusDiv.textContent = audio_only ? '⏳ Extracting audio...' : '⏳ Starting download...';
     statusDiv.classList.remove('hidden');
     progressDiv.classList.remove('hidden');
     
@@ -74,7 +77,8 @@ async function startDownload() {
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ url, quality })
+            body: JSON.stringify({ url, quality, audio_only })
+        });
         });
         
         const data = await response.json();

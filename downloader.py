@@ -70,12 +70,16 @@ class DownloadManager:
                 print(f"Retry {attempt + 1}/{self.max_retries} after {wait_time}s...")
                 time.sleep(wait_time)
     
-    def download(self, url, quality='best'):
+    def download(self, url, quality='best', audio_only=False):
         url = url.strip()
         if not url.startswith(('http://', 'https://')):
             raise Exception("Invalid URL format")
         
         domain = urlparse(url).netloc.lower()
+        
+        # If audio only requested, use audio downloader
+        if audio_only:
+            return self.download_audio(url)
         
         # YouTube
         if 'youtube.com' in domain or 'youtu.be' in domain:
@@ -89,9 +93,9 @@ class DownloadManager:
         elif 'dailymotion.com' in domain:
             return self.download_dailymotion(url, quality)
         
-        # Instagram (Currently unavailable due to rate limits)
+        # Instagram
         elif 'instagram.com' in domain:
-            return self.download_instagram_alternative(url)
+            return self.download_instagram_api(url)
         
         # Mega
         elif 'mega.nz' in domain or 'mega.io' in domain:
@@ -164,6 +168,40 @@ class DownloadManager:
             filename = ydl.prepare_filename(info)
             return self.sanitize_filename(os.path.basename(filename))
     
+    def download_audio(self, url):
+        """Download audio only (MP3)"""
+        proxy = self.get_random_proxy()
+        
+        ydl_opts = {
+            'format': 'bestaudio/best',
+            'outtmpl': os.path.join(self.download_folder, '%(title)s.%(ext)s'),
+            'quiet': False,
+            'socket_timeout': self.timeout,
+            'retries': self.max_retries,
+            'postprocessors': [{
+                'key': 'FFmpegExtractAudio',
+                'preferredcodec': 'mp3',
+                'preferredquality': '192',
+            }],
+            'http_headers': {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                'Accept-Language': 'en-us,en;q=0.5'
+            }
+        }
+        
+        if proxy:
+            ydl_opts['proxy'] = proxy
+        
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=True)
+            # After conversion, filename will have .mp3 extension
+            filename = ydl.prepare_filename(info)
+            # Replace extension with .mp3
+            filename_base = os.path.splitext(filename)[0]
+            mp3_filename = filename_base + '.mp3'
+            return self.sanitize_filename(os.path.basename(mp3_filename))
+    
     def download_youtube(self, url, quality):
         proxy = self.get_random_proxy()
         
@@ -227,13 +265,11 @@ class DownloadManager:
             return self.sanitize_filename(os.path.basename(filename))
     
     def download_telegram(self, url, quality):
-        if '/c/' in url and TELETHON_AVAILABLE:
-            try:
-                return asyncio.run(self.download_telegram_private(url))
-            except Exception as e:
-                print(f"Telethon failed: {e}")
-                raise Exception(f"Private Telegram channel requires authentication. Please configure telegram_config.py with your API credentials.")
+        # Check if it's a private channel (/c/ in URL)
+        if '/c/' in url:
+            raise Exception("Private Telegram channels are not supported. Please use public Telegram links only.")
         
+        # Public channels - use yt-dlp
         proxy = self.get_random_proxy()
         timestamp = int(time.time())
         
@@ -248,165 +284,102 @@ class DownloadManager:
         if proxy:
             ydl_opts['proxy'] = proxy
         
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=True)
-            filename = ydl.prepare_filename(info)
-            return self.sanitize_filename(os.path.basename(filename))
-    
-    async def download_telegram_private(self, url):
-        """Download from private Telegram channels using Telethon"""
-        if not TELETHON_AVAILABLE:
-            raise Exception("Telethon not installed. Run: pip install telethon")
-        
-        if not telegram_config.TELEGRAM_API_ID or not telegram_config.TELEGRAM_API_HASH:
-            raise Exception("Telegram API credentials not configured. Edit telegram_config.py")
-        
-        # Parse URL: https://t.me/c/1138977270/9500
-        parts = url.split('/')
-        channel_id = int(parts[-2])  # 1138977270
-        message_id = int(parts[-1])  # 9500
-        
-        # Convert to proper channel ID format
-        channel_id = int('-100' + str(channel_id))
-        
-        import time
-        timestamp = int(time.time())
-        
-        client = TelegramClient('telegram_session', telegram_config.TELEGRAM_API_ID, telegram_config.TELEGRAM_API_HASH)
-        
-        await client.start(phone=telegram_config.TELEGRAM_PHONE)
-        
         try:
-            # Get the message
-            message = await client.get_messages(channel_id, ids=message_id)
-            
-            if not message:
-                raise Exception("Message not found or you don't have access")
-            
-            # Download media
-            if message.media:
-                filename = f"{timestamp}_telegram_media"
-                
-                # Get proper extension
-                if hasattr(message.media, 'document'):
-                    for attr in message.media.document.attributes:
-                        if hasattr(attr, 'file_name'):
-                            filename = f"{timestamp}_{attr.file_name}"
-                            break
-                    if filename == f"{timestamp}_telegram_media":
-                        mime = message.media.document.mime_type
-                        ext = mime.split('/')[-1] if '/' in mime else 'mp4'
-                        filename = f"{timestamp}_telegram_video.{ext}"
-                elif hasattr(message.media, 'photo'):
-                    filename = f"{timestamp}_telegram_photo.jpg"
-                
-                filepath = os.path.join(self.download_folder, filename)
-                await client.download_media(message, filepath)
-                
-                await client.disconnect()
-                return filename
-            else:
-                await client.disconnect()
-                raise Exception("No media found in this message")
-                
-        except Exception as e:
-            await client.disconnect()
-            raise e
-    
-    def download_instagram_alternative(self, url):
-        """Alternative Instagram download using multiple methods"""
-        timestamp = int(time.time())
-        
-        # Method 1: Try with cookies and different extractors
-        try:
-            proxy = self.get_random_proxy()
-            
-            ydl_opts = {
-                'format': 'best',
-                'outtmpl': os.path.join(self.download_folder, f'{timestamp}_%(id)s.%(ext)s'),
-                'quiet': False,
-                'no_warnings': True,
-                'extractor_args': {
-                    'instagram': {
-                        'api': 'graphql'
-                    }
-                },
-                'http_headers': {
-                    'User-Agent': 'Instagram 219.0.0.12.117 Android',
-                    'Accept': '*/*',
-                    'Accept-Language': 'en-US',
-                    'X-IG-App-ID': '936619743392459',
-                    'X-ASBD-ID': '198387',
-                    'X-IG-WWW-Claim': '0',
-                    'Origin': 'https://www.instagram.com',
-                    'Referer': 'https://www.instagram.com/'
-                }
-            }
-            
-            if proxy:
-                ydl_opts['proxy'] = proxy
-            
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=True)
+                if info is None:
+                    raise Exception("Video not found or not accessible. Please check the link.")
                 filename = ydl.prepare_filename(info)
-                return os.path.basename(filename)
+                return self.sanitize_filename(os.path.basename(filename))
         except Exception as e:
-            print(f"Instagram method 1 failed: {e}")
-        
-        # Method 2: Try embed URL
+            if 'Private Telegram' in str(e):
+                raise e
+            raise Exception(f"Video not found or not accessible. Please check the link.")
+    
+    async def download_telegram_private(self, url):
+        """Disabled - Private channels not supported"""
+        raise Exception("Private Telegram channels are not supported. Please use public Telegram links only.")
+    
+    def download_instagram_api(self, url):
+        """Download Instagram using RapidAPI Downloader"""
         try:
-            if '/p/' in url or '/reel/' in url:
-                shortcode = url.split('/')[-2]
-                embed_url = f'https://www.instagram.com/p/{shortcode}/embed/'
+            # Extract shortcode from URL
+            if '/p/' in url or '/reel/' in url or '/tv/' in url:
+                shortcode = url.split('/')[-2].split('?')[0]
+            else:
+                raise Exception("Invalid Instagram URL format")
+            
+            timestamp = int(time.time())
+            
+            # Method 1: Try Instaloader (works for public posts)
+            try:
+                L = instaloader.Instaloader(
+                    dirname_pattern=self.download_folder,
+                    download_video_thumbnails=False,
+                    download_geotags=False,
+                    download_comments=False,
+                    save_metadata=False,
+                    compress_json=False,
+                    user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                )
                 
+                post = instaloader.Post.from_shortcode(L.context, shortcode)
+                L.download_post(post, target='')
+                
+                # Get the downloaded file
+                files = [f for f in os.listdir(self.download_folder) 
+                        if f.endswith(('.mp4', '.jpg', '.jpeg', '.png')) and 
+                        not f.endswith('.json.xz') and
+                        os.path.getmtime(os.path.join(self.download_folder, f)) > time.time() - 60]
+                
+                if files:
+                    latest = max([os.path.join(self.download_folder, f) for f in files], key=os.path.getctime)
+                    new_name = f"{timestamp}_instagram{os.path.splitext(latest)[1]}"
+                    new_path = os.path.join(self.download_folder, new_name)
+                    os.rename(latest, new_path)
+                    
+                    # Clean up extra files
+                    for f in os.listdir(self.download_folder):
+                        if f.endswith(('.json.xz', '.txt')) and shortcode in f:
+                            try:
+                                os.remove(os.path.join(self.download_folder, f))
+                            except:
+                                pass
+                    
+                    return new_name
+            except Exception as e:
+                print(f"Instaloader failed: {e}")
+            
+            # Method 2: Try yt-dlp with cookies
+            try:
+                proxy = self.get_random_proxy()
                 ydl_opts = {
                     'format': 'best',
                     'outtmpl': os.path.join(self.download_folder, f'{timestamp}_instagram.%(ext)s'),
                     'quiet': False,
+                    'cookiesfrombrowser': ('chrome',),
                     'http_headers': {
                         'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15',
                         'Referer': 'https://www.instagram.com/'
                     }
                 }
                 
+                if proxy:
+                    ydl_opts['proxy'] = proxy
+                
                 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                    info = ydl.extract_info(embed_url, download=True)
-                    filename = ydl.prepare_filename(info)
-                    return os.path.basename(filename)
+                    info = ydl.extract_info(url, download=True)
+                    if info:
+                        filename = ydl.prepare_filename(info)
+                        return os.path.basename(filename)
+            except Exception as e:
+                print(f"yt-dlp method failed: {e}")
+            
+            raise Exception("Instagram download failed. The post may be private or deleted. Try a public post.")
+            
         except Exception as e:
-            print(f"Instagram method 2 failed: {e}")
-        
-        # Method 3: Direct API scraping
-        try:
-            if '/p/' in url or '/reel/' in url:
-                shortcode = url.split('/')[-2]
-                api_url = f'https://www.instagram.com/p/{shortcode}/?__a=1&__d=dis'
-                
-                headers = {
-                    'User-Agent': 'Instagram 219.0.0.12.117 Android',
-                    'Accept': '*/*',
-                    'X-IG-App-ID': '936619743392459'
-                }
-                
-                response = requests.get(api_url, headers=headers)
-                if response.status_code == 200:
-                    data = response.json()
-                    
-                    # Extract video URL from JSON
-                    try:
-                        media = data['items'][0]
-                        if 'video_versions' in media:
-                            video_url = media['video_versions'][0]['url']
-                            return self.download_direct(video_url)
-                    except:
-                        pass
-        except Exception as e:
-            print(f"Instagram method 3 failed: {e}")
-        
-        # All methods failed
-        raise Exception("Instagram download failed. The post may be private, deleted, or Instagram is blocking requests. Try: YouTube, Twitter, TikTok instead.")
-    
-    def download_instagram(self, url):
+            raise Exception(f"Instagram download failed: {str(e)}")
+
         """Download Instagram using yt-dlp (more reliable than instaloader)"""
         try:
             timestamp = int(time.time())

@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Do Anything - Video Tools</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .tools-container {
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 30px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+        
+        .tool-card {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            color: white;
+        }
+        
+        .tool-card h2 {
+            margin: 0 0 15px 0;
+            font-size: 24px;
+        }
+        
+        .upload-area {
+            background: rgba(255,255,255,0.2);
+            border: 2px dashed rgba(255,255,255,0.5);
+            border-radius: 10px;
+            padding: 30px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .upload-area:hover {
+            background: rgba(255,255,255,0.3);
+            border-color: white;
+        }
+        
+        .upload-area input[type="file"] {
+            display: none;
+        }
+        
+        .watermark-options {
+            margin-top: 20px;
+            display: none;
+        }
+        
+        .watermark-options.active {
+            display: block;
+        }
+        
+        .option-group {
+            margin: 15px 0;
+        }
+        
+        .option-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+        
+        .option-group select,
+        .option-group input {
+            width: 100%;
+            padding: 10px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        
+        .process-btn {
+            background: white;
+            color: #f5576c;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 15px;
+            transition: all 0.3s;
+        }
+        
+        .process-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        
+        .process-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .status-message {
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 8px;
+            background: rgba(255,255,255,0.2);
+            display: none;
+        }
+        
+        .status-message.active {
+            display: block;
+        }
+        
+        .download-result {
+            margin-top: 20px;
+            display: none;
+        }
+        
+        .download-result.active {
+            display: block;
+        }
+        
+        .download-result a {
+            display: inline-block;
+            background: white;
+            color: #f5576c;
+            padding: 12px 30px;
+            border-radius: 25px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        
+        .download-result a:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: #f5576c;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        
+        .back-link:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <script async="async" data-cfasync="false" src="//breachuptown.com/6f/78/04/6f780474eb2a9dd7858efa9f1093bfff.js"></script>
+    
+    <div class="container">
+        <div class="tools-container">
+            <a href="/" class="back-link">← Back to Downloader</a>
+            
+            <h1 style="text-align: center; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 30px;">
+                Do Anything - Video Tools
+            </h1>
+            
+            <!-- Watermark Remover Tool -->
+            <div class="tool-card">
+                <h2>🚫 Watermark Remover</h2>
+                <p style="margin-bottom: 20px;">Remove watermarks from TikTok, Instagram, and other videos</p>
+                
+                <div class="upload-area" onclick="document.getElementById('videoFile1').click()">
+                    <input type="file" id="videoFile1" accept="video/*" onchange="handleFileSelect(event, 'watermark')">
+                    <p style="margin: 0; font-size: 18px;">📁 Click to upload video</p>
+                    <p style="margin: 5px 0 0 0; font-size: 14px; opacity: 0.8;">Supports MP4, MOV, AVI, MKV</p>
+                </div>
+                
+                <div class="watermark-options" id="watermarkOptions">
+                    <div class="option-group">
+                        <label>Watermark Type:</label>
+                        <select id="watermarkType">
+                            <option value="tiktok">TikTok (Bottom Center)</option>
+                            <option value="instagram">Instagram (Top Right)</option>
+                            <option value="custom">Custom Position</option>
+                        </select>
+                    </div>
+                    
+                    <div id="customPosition" style="display: none;">
+                        <div class="option-group">
+                            <label>X Position:</label>
+                            <input type="number" id="posX" value="0" min="0">
+                        </div>
+                        <div class="option-group">
+                            <label>Y Position:</label>
+                            <input type="number" id="posY" value="0" min="0">
+                        </div>
+                        <div class="option-group">
+                            <label>Width:</label>
+                            <input type="number" id="width" value="200" min="1">
+                        </div>
+                        <div class="option-group">
+                            <label>Height:</label>
+                            <input type="number" id="height" value="100" min="1">
+                        </div>
+                    </div>
+                    
+                    <button class="process-btn" onclick="removeWatermark()">Remove Watermark</button>
+                </div>
+                
+                <div class="status-message" id="statusMessage1"></div>
+                <div class="download-result" id="downloadResult1"></div>
+            </div>
+            
+            <!-- Video to GIF Converter -->
+            <div class="tool-card">
+                <h2>🎬 Video to GIF Converter</h2>
+                <p style="margin-bottom: 20px;">Convert any video to animated GIF</p>
+                
+                <div class="upload-area" onclick="document.getElementById('videoFile2').click()">
+                    <input type="file" id="videoFile2" accept="video/*" onchange="handleFileSelect(event, 'gif')">
+                    <p style="margin: 0; font-size: 18px;">📁 Click to upload video</p>
+                    <p style="margin: 5px 0 0 0; font-size: 14px; opacity: 0.8;">Best for short clips (5-10 seconds)</p>
+                </div>
+                
+                <div class="watermark-options" id="gifOptions">
+                    <div class="option-group">
+                        <label>Start Time (seconds):</label>
+                        <input type="number" id="gifStart" value="0" min="0" step="0.1">
+                    </div>
+                    <div class="option-group">
+                        <label>Duration (seconds):</label>
+                        <input type="number" id="gifDuration" value="5" min="1" max="30" step="0.1">
+                    </div>
+                    <div class="option-group">
+                        <label>Frame Rate (FPS):</label>
+                        <select id="gifFps">
+                            <option value="10">10 FPS (Smaller)</option>
+                            <option value="15" selected>15 FPS (Balanced)</option>
+                            <option value="20">20 FPS (Smoother)</option>
+                        </select>
+                    </div>
+                    
+                    <button class="process-btn" onclick="convertToGif()">Convert to GIF</button>
+                </div>
+                
+                <div class="status-message" id="statusMessage2"></div>
+                <div class="download-result" id="downloadResult2"></div>
+            </div>
+            
+            <!-- Video Compressor -->
+            <div class="tool-card">
+                <h2>🗜️ Video Compressor</h2>
+                <p style="margin-bottom: 20px;">Reduce video file size without losing quality</p>
+                
+                <div class="upload-area" onclick="document.getElementById('videoFile3').click()">
+                    <input type="file" id="videoFile3" accept="video/*" onchange="handleFileSelect(event, 'compress')">
+                    <p style="margin: 0; font-size: 18px;">📁 Click to upload video</p>
+                    <p style="margin: 5px 0 0 0; font-size: 14px; opacity: 0.8;">Compress large videos</p>
+                </div>
+                
+                <div class="watermark-options" id="compressOptions">
+                    <div class="option-group">
+                        <label>Compression Level:</label>
+                        <select id="compressQuality">
+                            <option value="high">High Quality (Less compression)</option>
+                            <option value="medium" selected>Medium (Balanced)</option>
+                            <option value="low">Low Quality (Max compression)</option>
+                        </select>
+                    </div>
+                    
+                    <button class="process-btn" onclick="compressVideo()">Compress Video</button>
+                </div>
+                
+                <div class="status-message" id="statusMessage3"></div>
+                <div class="download-result" id="downloadResult3"></div>
+            </div>
+            
+            <!-- Format Converter -->
+            <div class="tool-card">
+                <h2>🔄 Format Converter</h2>
+                <p style="margin-bottom: 20px;">Convert video to different formats</p>
+                
+                <div class="upload-area" onclick="document.getElementById('videoFile4').click()">
+                    <input type="file" id="videoFile4" accept="video/*" onchange="handleFileSelect(event, 'convert')">
+                    <p style="margin: 0; font-size: 18px;">📁 Click to upload video</p>
+                    <p style="margin: 5px 0 0 0; font-size: 14px; opacity: 0.8;">Any video format</p>
+                </div>
+                
+                <div class="watermark-options" id="convertOptions">
+                    <div class="option-group">
+                        <label>Output Format:</label>
+                        <select id="outputFormat">
+                            <option value="mp4">MP4 (Most Compatible)</option>
+                            <option value="avi">AVI</option>
+                            <option value="mkv">MKV (High Quality)</option>
+                            <option value="mov">MOV (Apple)</option>
+                            <option value="webm">WebM (Web)</option>
+                        </select>
+                    </div>
+                    
+                    <button class="process-btn" onclick="convertFormat()">Convert Format</button>
+                </div>
+                
+                <div class="status-message" id="statusMessage4"></div>
+                <div class="download-result" id="downloadResult4"></div>
+            </div>
+            
+            <!-- Video Rotator -->
+            <div class="tool-card">
+                <h2>🔄 Video Rotator</h2>
+                <p style="margin-bottom: 20px;">Rotate or flip your videos</p>
+                
+                <div class="upload-area" onclick="document.getElementById('videoFile5').click()">
+                    <input type="file" id="videoFile5" accept="video/*" onchange="handleFileSelect(event, 'rotate')">
+                    <p style="margin: 0; font-size: 18px;">📁 Click to upload video</p>
+                    <p style="margin: 5px 0 0 0; font-size: 14px; opacity: 0.8;">Fix orientation issues</p>
+                </div>
+                
+                <div class="watermark-options" id="rotateOptions">
+                    <div class="option-group">
+                        <label>Rotation:</label>
+                        <select id="rotationType">
+                            <option value="90">Rotate 90° Clockwise</option>
+                            <option value="180">Rotate 180°</option>
+                            <option value="270">Rotate 270° (90° Counter-clockwise)</option>
+                            <option value="flip_h">Flip Horizontal</option>
+                            <option value="flip_v">Flip Vertical</option>
+                        </select>
+                    </div>
+                    
+                    <button class="process-btn" onclick="rotateVideo()">Rotate Video</button>
+                </div>
+                
+                <div class="status-message" id="statusMessage5"></div>
+                <div class="download-result" id="downloadResult5"></div>
+            </div>
+            
+            <!-- Ad Banner -->
+            <div style="text-align: center; margin-top: 30px;">
+                <script async="async" data-cfasync="false" src="//breachuptown.com/6f/78/04/6f780474eb2a9dd7858efa9f1093bfff.js"></script>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let selectedFiles = {};
+        
+        function handleFileSelect(event, toolType) {
+            selectedFiles[toolType] = event.target.files[0];
+            if (selectedFiles[toolType]) {
+                event.target.parentElement.querySelector('p').textContent = `✅ ${selectedFiles[toolType].name}`;
+                document.getElementById(toolType + 'Options').classList.add('active');
+            }
+        }
+        
+        document.getElementById('watermarkType').addEventListener('change', function() {
+            const customDiv = document.getElementById('customPosition');
+            if (this.value === 'custom') {
+                customDiv.style.display = 'block';
+            } else {
+                customDiv.style.display = 'none';
+            }
+        });
+        
+        async function removeWatermark() {
+            if (!selectedFiles['watermark']) {
+                alert('Please select a video file first!');
+                return;
+            }
+            
+            const statusDiv = document.getElementById('statusMessage1');
+            const resultDiv = document.getElementById('downloadResult1');
+            const btn = event.target;
+            
+            statusDiv.textContent = '⏳ Processing video... This may take a few minutes.';
+            statusDiv.classList.add('active');
+            resultDiv.classList.remove('active');
+            btn.disabled = true;
+            
+            const formData = new FormData();
+            formData.append('video', selectedFiles['watermark']);
+            formData.append('type', document.getElementById('watermarkType').value);
+            
+            if (document.getElementById('watermarkType').value === 'custom') {
+                formData.append('x', document.getElementById('posX').value);
+                formData.append('y', document.getElementById('posY').value);
+                formData.append('width', document.getElementById('width').value);
+                formData.append('height', document.getElementById('height').value);
+            }
+            
+            try {
+                const response = await fetch('/remove-watermark', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    statusDiv.textContent = '✅ Watermark removed successfully!';
+                    resultDiv.innerHTML = `<a href="/download-file/${data.filename}" download>📥 Download Video</a>`;
+                    resultDiv.classList.add('active');
+                } else {
+                    statusDiv.textContent = `❌ Error: ${data.error}`;
+                }
+            } catch (error) {
+                statusDiv.textContent = `❌ Error: ${error.message}`;
+            } finally {
+                btn.disabled = false;
+            }
+        }
+        
+        async function convertToGif() {
+            if (!selectedFiles['gif']) {
+                alert('Please select a video file first!');
+                return;
+            }
+            
+            const statusDiv = document.getElementById('statusMessage2');
+            const resultDiv = document.getElementById('downloadResult2');
+            const btn = event.target;
+            
+            statusDiv.textContent = '⏳ Converting to GIF... Please wait.';
+            statusDiv.classList.add('active');
+            resultDiv.classList.remove('active');
+            btn.disabled = true;
+            
+            const formData = new FormData();
+            formData.append('video', selectedFiles['gif']);
+            formData.append('start', document.getElementById('gifStart').value);
+            formData.append('duration', document.getElementById('gifDuration').value);
+            formData.append('fps', document.getElementById('gifFps').value);
+            
+            try {
+                const response = await fetch('/video-to-gif', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    statusDiv.textContent = '✅ GIF created successfully!';
+                    resultDiv.innerHTML = `<a href="/download-file/${data.filename}" download>📥 Download GIF</a>`;
+                    resultDiv.classList.add('active');
+                } else {
+                    statusDiv.textContent = `❌ Error: ${data.error}`;
+                }
+            } catch (error) {
+                statusDiv.textContent = `❌ Error: ${error.message}`;
+            } finally {
+                btn.disabled = false;
+            }
+        }
+        
+        async function compressVideo() {
+            if (!selectedFiles['compress']) {
+                alert('Please select a video file first!');
+                return;
+            }
+            
+            const statusDiv = document.getElementById('statusMessage3');
+            const resultDiv = document.getElementById('downloadResult3');
+            const btn = event.target;
+            
+            statusDiv.textContent = '⏳ Compressing video... This may take a while.';
+            statusDiv.classList.add('active');
+            resultDiv.classList.remove('active');
+            btn.disabled = true;
+            
+            const formData = new FormData();
+            formData.append('video', selectedFiles['compress']);
+            formData.append('quality', document.getElementById('compressQuality').value);
+            
+            try {
+                const response = await fetch('/compress-video', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    statusDiv.textContent = `✅ Video compressed! Original: ${data.original_size}, New: ${data.compressed_size}`;
+                    resultDiv.innerHTML = `<a href="/download-file/${data.filename}" download>📥 Download Compressed Video</a>`;
+                    resultDiv.classList.add('active');
+                } else {
+                    statusDiv.textContent = `❌ Error: ${data.error}`;
+                }
+            } catch (error) {
+                statusDiv.textContent = `❌ Error: ${error.message}`;
+            } finally {
+                btn.disabled = false;
+            }
+        }
+        
+        async function convertFormat() {
+            if (!selectedFiles['convert']) {
+                alert('Please select a video file first!');
+                return;
+            }
+            
+            const statusDiv = document.getElementById('statusMessage4');
+            const resultDiv = document.getElementById('downloadResult4');
+            const btn = event.target;
+            
+            statusDiv.textContent = '⏳ Converting format... Please wait.';
+            statusDiv.classList.add('active');
+            resultDiv.classList.remove('active');
+            btn.disabled = true;
+            
+            const formData = new FormData();
+            formData.append('video', selectedFiles['convert']);
+            formData.append('format', document.getElementById('outputFormat').value);
+            
+            try {
+                const response = await fetch('/convert-format', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    statusDiv.textContent = '✅ Format converted successfully!';
+                    resultDiv.innerHTML = `<a href="/download-file/${data.filename}" download>📥 Download ${document.getElementById('outputFormat').value.toUpperCase()}</a>`;
+                    resultDiv.classList.add('active');
+                } else {
+                    statusDiv.textContent = `❌ Error: ${data.error}`;
+                }
+            } catch (error) {
+                statusDiv.textContent = `❌ Error: ${error.message}`;
+            } finally {
+                btn.disabled = false;
+            }
+        }
+        
+        async function rotateVideo() {
+            if (!selectedFiles['rotate']) {
+                alert('Please select a video file first!');
+                return;
+            }
+            
+            const statusDiv = document.getElementById('statusMessage5');
+            const resultDiv = document.getElementById('downloadResult5');
+            const btn = event.target;
+            
+            statusDiv.textContent = '⏳ Rotating video... Please wait.';
+            statusDiv.classList.add('active');
+            resultDiv.classList.remove('active');
+            btn.disabled = true;
+            
+            const formData = new FormData();
+            formData.append('video', selectedFiles['rotate']);
+            formData.append('rotation', document.getElementById('rotationType').value);
+            
+            try {
+                const response = await fetch('/rotate-video', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    statusDiv.textContent = '✅ Video rotated successfully!';
+                    resultDiv.innerHTML = `<a href="/download-file/${data.filename}" download>📥 Download Rotated Video</a>`;
+                    resultDiv.classList.add('active');
+                } else {
+                    statusDiv.textContent = `❌ Error: ${data.error}`;
+                }
+            } catch (error) {
+                statusDiv.textContent = `❌ Error: ${error.message}`;
+            } finally {
+                btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>

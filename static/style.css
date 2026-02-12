@@ -157,7 +157,19 @@ h1 {
     font-size: 14px;
 }
 
-#qualitySelect {
+.format-selector {
+    flex: 1;
+}
+
+.format-selector label {
+    display: block;
+    color: white;
+    font-weight: 500;
+    margin-bottom: 8px;
+    font-size: 14px;
+}
+
+#qualitySelect, #formatSelect {
     width: 100%;
     padding: 15px 20px;
     border: none;
@@ -170,7 +182,7 @@ h1 {
     transition: all 0.3s ease;
 }
 
-#qualitySelect:hover {
+#qualitySelect:hover, #formatSelect:hover {
     box-shadow: 0 10px 30px rgba(0,0,0,0.15);
     transform: translateY(-2px);
 }
