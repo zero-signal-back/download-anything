@@ -129,6 +129,14 @@ def tool_pdf():
 def tool_qr():
     return render_template('tool_qr.html')
 
+@app.route('/robots.txt')
+def robots():
+    return send_file('robots.txt', mimetype='text/plain')
+
+@app.route('/sitemap.xml')
+def sitemap():
+    return send_file('sitemap.xml', mimetype='application/xml')
+
 @app.route('/download', methods=['POST'])
 @rate_limit
 def download():

@@ -1,0 +1,35 @@
+User-agent: *
+Allow: /
+Allow: /username-finder
+Allow: /do-anything
+Allow: /tool/*
+
+Disallow: /download
+Disallow: /status/*
+Disallow: /file/*
+Disallow: /download-file/*
+Disallow: /search-username
+Disallow: /remove-watermark
+Disallow: /video-to-gif
+Disallow: /compress-video
+Disallow: /convert-format
+Disallow: /rotate-video
+Disallow: /download-subtitle
+
+Sitemap: https://downloadanything.jo3.org/sitemap.xml
+
+# Crawl-delay for specific bots
+User-agent: Googlebot
+Crawl-delay: 1
+
+User-agent: Bingbot
+Crawl-delay: 1
+
+User-agent: Yandex
+Crawl-delay: 2
+
+User-agent: DuckDuckBot
+Crawl-delay: 1
+
+User-agent: Baiduspider
+Crawl-delay: 2
