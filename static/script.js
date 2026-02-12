@@ -79,7 +79,6 @@ async function startDownload() {
             },
             body: JSON.stringify({ url, quality, audio_only })
         });
-        });
         
         const data = await response.json();
         
