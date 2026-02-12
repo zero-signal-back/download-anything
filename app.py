@@ -93,6 +93,26 @@ def username_finder():
 def do_anything():
     return render_template('do_anything.html')
 
+@app.route('/tool/watermark-remover')
+def tool_watermark():
+    return render_template('tool_watermark.html')
+
+@app.route('/tool/video-to-gif')
+def tool_gif():
+    return render_template('tool_gif.html')
+
+@app.route('/tool/video-compressor')
+def tool_compress():
+    return render_template('tool_compress.html')
+
+@app.route('/tool/format-converter')
+def tool_convert():
+    return render_template('tool_convert.html')
+
+@app.route('/tool/video-rotator')
+def tool_rotate():
+    return render_template('tool_rotate.html')
+
 @app.route('/download', methods=['POST'])
 @rate_limit
 def download():
@@ -357,6 +377,9 @@ def internal_error(error):
 
 @app.errorhandler(404)
 def not_found(error):
+    # Handle favicon requests silently
+    if 'favicon.ico' in str(error):
+        return '', 204
     return jsonify({'error': 'Not found'}), 404
 
 if __name__ == '__main__':

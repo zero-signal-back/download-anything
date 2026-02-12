@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Watermark Remover - Do Anything</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .tool-container {
+            max-width: 700px;
+            margin: 40px auto;
+            padding: 30px;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+        
+        .tool-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .tool-header h1 {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-size: 36px;
+            margin-bottom: 10px;
+        }
+        
+        .upload-box {
+            border: 3px dashed #f5576c;
+            border-radius: 15px;
+            padding: 50px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: rgba(245, 87, 108, 0.05);
+        }
+        
+        .upload-box:hover {
+            background: rgba(245, 87, 108, 0.1);
+            border-color: #f093fb;
+        }
+        
+        .upload-box input {
+            display: none;
+        }
+        
+        .upload-icon {
+            font-size: 60px;
+            color: #f5576c;
+            margin-bottom: 15px;
+        }
+        
+        .options-panel {
+            margin-top: 25px;
+            display: none;
+        }
+        
+        .options-panel.active {
+            display: block;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .form-group select,
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 15px;
+            transition: border 0.3s;
+        }
+        
+        .form-group select:focus,
+        .form-group input:focus {
+            outline: none;
+            border-color: #f5576c;
+        }
+        
+        .process-button {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 20px;
+        }
+        
+        .process-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(245, 87, 108, 0.4);
+        }
+        
+        .process-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .status-box {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 10px;
+            display: none;
+        }
+        
+        .status-box.active {
+            display: block;
+        }
+        
+        .status-box.processing {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .status-box.success {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .status-box.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .download-btn {
+            display: inline-block;
+            margin-top: 15px;
+            padding: 12px 30px;
+            background: #28a745;
+            color: white;
+            text-decoration: none;
+            border-radius: 10px;
+            font-weight: 600;
+        }
+        
+        .download-btn:hover {
+            background: #218838;
+        }
+        
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: #f5576c;
+            text-decoration: none;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/do-anything" class="back-link"><i class="fas fa-arrow-left"></i> Back to Tools</a>
+        
+        <div class="tool-container">
+            <div class="tool-header">
+                <h1><i class="fas fa-eraser"></i> Watermark Remover</h1>
+                <p>Remove watermarks from TikTok, Instagram, and other videos</p>
+            </div>
+            
+            <div class="upload-box" onclick="document.getElementById('videoFile').click()">
+                <input type="file" id="videoFile" accept="video/*" onchange="handleFileSelect(event)">
+                <div class="upload-icon"><i class="fas fa-cloud-upload-alt"></i></div>
+                <h3>Click to upload video</h3>
+                <p>Supports MP4, MOV, AVI, MKV</p>
+            </div>
+            
+            <div class="options-panel" id="optionsPanel">
+                <div class="form-group">
+                    <label><i class="fas fa-cog"></i> Watermark Type</label>
+                    <select id="watermarkType" onchange="toggleCustom()">
+                        <option value="tiktok">TikTok (Bottom Center)</option>
+                        <option value="instagram">Instagram (Top Right)</option>
+                        <option value="custom">Custom Position</option>
+                    </select>
+                </div>
+                
+                <div id="customFields" style="display: none;">
+                    <div class="form-group">
+                        <label>X Position</label>
+                        <input type="number" id="posX" value="0" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label>Y Position</label>
+                        <input type="number" id="posY" value="0" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label>Width</label>
+                        <input type="number" id="width" value="200" min="1">
+                    </div>
+                    <div class="form-group">
+                        <label>Height</label>
+                        <input type="number" id="height" value="100" min="1">
+                    </div>
+                </div>
+                
+                <button class="process-button" onclick="processVideo()">
+                    <i class="fas fa-magic"></i> Remove Watermark
+                </button>
+            </div>
+            
+            <div class="status-box" id="statusBox"></div>
+        </div>
+    </div>
+    
+    <script>
+        let selectedFile = null;
+        
+        function handleFileSelect(event) {
+            selectedFile = event.target.files[0];
+            if (selectedFile) {
+                document.querySelector('.upload-box h3').textContent = '✓ ' + selectedFile.name;
+                document.getElementById('optionsPanel').classList.add('active');
+            }
+        }
+        
+        function toggleCustom() {
+            const type = document.getElementById('watermarkType').value;
+            document.getElementById('customFields').style.display = type === 'custom' ? 'block' : 'none';
+        }
+        
+        async function processVideo() {
+            if (!selectedFile) {
+                alert('Please select a video first!');
+                return;
+            }
+            
+            const statusBox = document.getElementById('statusBox');
+            const btn = event.target;
+            
+            statusBox.className = 'status-box active processing';
+            statusBox.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing video... This may take a few minutes.';
+            btn.disabled = true;
+            
+            const formData = new FormData();
+            formData.append('video', selectedFile);
+            formData.append('type', document.getElementById('watermarkType').value);
+            
+            if (document.getElementById('watermarkType').value === 'custom') {
+                formData.append('x', document.getElementById('posX').value);
+                formData.append('y', document.getElementById('posY').value);
+                formData.append('width', document.getElementById('width').value);
+                formData.append('height', document.getElementById('height').value);
+            }
+            
+            try {
+                const response = await fetch('/remove-watermark', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    statusBox.className = 'status-box active success';
+                    statusBox.innerHTML = `
+                        <i class="fas fa-check-circle"></i> Watermark removed successfully!
+                        <br><a href="/download-file/${data.filename}" class="download-btn" download>
+                            <i class="fas fa-download"></i> Download Video
+                        </a>
+                    `;
+                } else {
+                    statusBox.className = 'status-box active error';
+                    statusBox.innerHTML = `<i class="fas fa-exclamation-circle"></i> Error: ${data.error}`;
+                }
+            } catch (error) {
+                statusBox.className = 'status-box active error';
+                statusBox.innerHTML = `<i class="fas fa-exclamation-circle"></i> Error: ${error.message}`;
+            } finally {
+                btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>

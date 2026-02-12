@@ -2,13 +2,16 @@ import os
 import subprocess
 import config
 from werkzeug.utils import secure_filename
+import logging
 
 # Get FFmpeg path from static-ffmpeg
 try:
     from static_ffmpeg import run
     ffmpeg_path = run.get_or_download_version('latest')['ffmpeg']
-except:
+    logging.info(f"Using static-ffmpeg: {ffmpeg_path}")
+except Exception as e:
     ffmpeg_path = 'ffmpeg'  # Fallback to system FFmpeg
+    logging.warning(f"Static-ffmpeg failed, using system FFmpeg: {e}")
 
 class VideoTools:
     def __init__(self, upload_folder):
@@ -22,14 +25,19 @@ class VideoTools:
         output_path = os.path.join(self.upload_folder, output_filename)
         
         cmd = [
-            self.ffmpeg, '-i', video_path,
+            self.ffmpeg, '-y', '-i', video_path,
             '-vf', f'delogo=x={x}:y={y}:w={width}:h={height}',
+            '-c:v', 'libx264', '-preset', 'fast',
             '-c:a', 'copy',
             output_path
         ]
         
-        subprocess.run(cmd, check=True, capture_output=True)
-        return output_filename
+        try:
+            result = subprocess.run(cmd, check=True, capture_output=True, text=True)
+            return output_filename
+        except subprocess.CalledProcessError as e:
+            error_msg = e.stderr if e.stderr else str(e)
+            raise Exception(f"FFmpeg error: {error_msg[:200]}")
     
     def remove_tiktok_watermark(self, video_path):
         """Remove TikTok watermark (bottom center)"""
@@ -46,15 +54,19 @@ class VideoTools:
         output_path = os.path.join(self.upload_folder, output_filename)
         
         cmd = [
-            self.ffmpeg, '-ss', str(start_time), '-t', str(duration),
+            self.ffmpeg, '-y', '-ss', str(start_time), '-t', str(duration),
             '-i', video_path,
             '-vf', f'fps={fps},scale=480:-1:flags=lanczos',
             '-loop', '0',
             output_path
         ]
         
-        subprocess.run(cmd, check=True, capture_output=True)
-        return output_filename
+        try:
+            subprocess.run(cmd, check=True, capture_output=True, text=True)
+            return output_filename
+        except subprocess.CalledProcessError as e:
+            error_msg = e.stderr if e.stderr else str(e)
+            raise Exception(f"FFmpeg error: {error_msg[:200]}")
     
     def compress_video(self, video_path, quality='medium'):
         """Compress video - quality: low, medium, high"""
@@ -62,12 +74,11 @@ class VideoTools:
         output_filename = f"compressed_{filename}"
         output_path = os.path.join(self.upload_folder, output_filename)
         
-        # CRF values: lower = better quality, higher = smaller size
         crf_values = {'high': '23', 'medium': '28', 'low': '35'}
         crf = crf_values.get(quality, '28')
         
         cmd = [
-            self.ffmpeg, '-i', video_path,
+            self.ffmpeg, '-y', '-i', video_path,
             '-vcodec', 'libx264',
             '-crf', crf,
             '-preset', 'fast',
@@ -76,8 +87,12 @@ class VideoTools:
             output_path
         ]
         
-        subprocess.run(cmd, check=True, capture_output=True)
-        return output_filename
+        try:
+            subprocess.run(cmd, check=True, capture_output=True, text=True)
+            return output_filename
+        except subprocess.CalledProcessError as e:
+            error_msg = e.stderr if e.stderr else str(e)
+            raise Exception(f"FFmpeg error: {error_msg[:200]}")
     
     def convert_format(self, video_path, output_format):
         """Convert video format - mp4, avi, mkv, mov, webm"""
@@ -86,15 +101,19 @@ class VideoTools:
         output_path = os.path.join(self.upload_folder, output_filename)
         
         cmd = [
-            self.ffmpeg, '-i', video_path,
+            self.ffmpeg, '-y', '-i', video_path,
             '-c:v', 'libx264',
             '-c:a', 'aac',
             '-strict', 'experimental',
             output_path
         ]
         
-        subprocess.run(cmd, check=True, capture_output=True)
-        return output_filename
+        try:
+            subprocess.run(cmd, check=True, capture_output=True, text=True)
+            return output_filename
+        except subprocess.CalledProcessError as e:
+            error_msg = e.stderr if e.stderr else str(e)
+            raise Exception(f"FFmpeg error: {error_msg[:200]}")
     
     def rotate_video(self, video_path, rotation):
         """Rotate video - 90, 180, 270 degrees or flip"""
@@ -102,7 +121,6 @@ class VideoTools:
         output_filename = f"rotated_{filename}"
         output_path = os.path.join(self.upload_folder, output_filename)
         
-        # Rotation filters
         filters = {
             '90': 'transpose=1',
             '180': 'transpose=1,transpose=1',
@@ -114,11 +132,16 @@ class VideoTools:
         vf = filters.get(rotation, 'transpose=1')
         
         cmd = [
-            self.ffmpeg, '-i', video_path,
+            self.ffmpeg, '-y', '-i', video_path,
             '-vf', vf,
+            '-c:v', 'libx264', '-preset', 'fast',
             '-c:a', 'copy',
             output_path
         ]
         
-        subprocess.run(cmd, check=True, capture_output=True)
-        return output_filename
+        try:
+            subprocess.run(cmd, check=True, capture_output=True, text=True)
+            return output_filename
+        except subprocess.CalledProcessError as e:
+            error_msg = e.stderr if e.stderr else str(e)
+            raise Exception(f"FFmpeg error: {error_msg[:200]}")

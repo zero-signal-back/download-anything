@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Rotator - Do Anything</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .tool-container { max-width: 700px; margin: 40px auto; padding: 30px; background: white; border-radius: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.1); }
+        .tool-header { text-align: center; margin-bottom: 30px; }
+        .tool-header h1 { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 36px; margin-bottom: 10px; }
+        .upload-box { border: 3px dashed #f5576c; border-radius: 15px; padding: 50px 20px; text-align: center; cursor: pointer; transition: all 0.3s; background: rgba(245, 87, 108, 0.05); }
+        .upload-box:hover { background: rgba(245, 87, 108, 0.1); border-color: #f093fb; }
+        .upload-box input { display: none; }
+        .upload-icon { font-size: 60px; color: #f5576c; margin-bottom: 15px; }
+        .options-panel { margin-top: 25px; display: none; }
+        .options-panel.active { display: block; }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 8px; font-weight: 600; color: #333; }
+        .form-group select { width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 10px; font-size: 15px; }
+        .process-button { width: 100%; padding: 15px; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; border: none; border-radius: 10px; font-size: 18px; font-weight: 600; cursor: pointer; transition: all 0.3s; margin-top: 20px; }
+        .process-button:hover { transform: translateY(-2px); box-shadow: 0 5px 20px rgba(245, 87, 108, 0.4); }
+        .process-button:disabled { opacity: 0.5; cursor: not-allowed; }
+        .status-box { margin-top: 20px; padding: 15px; border-radius: 10px; display: none; }
+        .status-box.active { display: block; }
+        .status-box.processing { background: #fff3cd; color: #856404; }
+        .status-box.success { background: #d4edda; color: #155724; }
+        .status-box.error { background: #f8d7da; color: #721c24; }
+        .download-btn { display: inline-block; margin-top: 15px; padding: 12px 30px; background: #28a745; color: white; text-decoration: none; border-radius: 10px; font-weight: 600; }
+        .back-link { display: inline-block; margin-bottom: 20px; color: #f5576c; text-decoration: none; font-weight: 600; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/do-anything" class="back-link"><i class="fas fa-arrow-left"></i> Back to Tools</a>
+        
+        <div class="tool-container">
+            <div class="tool-header">
+                <h1><i class="fas fa-redo"></i> Video Rotator</h1>
+                <p>Rotate or flip your videos</p>
+            </div>
+            
+            <div class="upload-box" onclick="document.getElementById('videoFile').click()">
+                <input type="file" id="videoFile" accept="video/*" onchange="handleFileSelect(event)">
+                <div class="upload-icon"><i class="fas fa-cloud-upload-alt"></i></div>
+                <h3>Click to upload video</h3>
+                <p>Fix orientation issues</p>
+            </div>
+            
+            <div class="options-panel" id="optionsPanel">
+                <div class="form-group">
+                    <label><i class="fas fa-sync-alt"></i> Rotation</label>
+                    <select id="rotation">
+                        <option value="90">Rotate 90° Clockwise</option>
+                        <option value="180">Rotate 180°</option>
+                        <option value="270">Rotate 270° (90° Counter-clockwise)</option>
+                        <option value="flip_h">Flip Horizontal</option>
+                        <option value="flip_v">Flip Vertical</option>
+                    </select>
+                </div>
+                
+                <button class="process-button" onclick="processVideo()">
+                    <i class="fas fa-magic"></i> Rotate Video
+                </button>
+            </div>
+            
+            <div class="status-box" id="statusBox"></div>
+        </div>
+    </div>
+    
+    <script>
+        let selectedFile = null;
+        function handleFileSelect(event) {
+            selectedFile = event.target.files[0];
+            if (selectedFile) {
+                document.querySelector('.upload-box h3').textContent = '✓ ' + selectedFile.name;
+                document.getElementById('optionsPanel').classList.add('active');
+            }
+        }
+        async function processVideo() {
+            if (!selectedFile) { alert('Please select a video first!'); return; }
+            const statusBox = document.getElementById('statusBox');
+            const btn = event.target;
+            statusBox.className = 'status-box active processing';
+            statusBox.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Rotating video... Please wait.';
+            btn.disabled = true;
+            const formData = new FormData();
+            formData.append('video', selectedFile);
+            formData.append('rotation', document.getElementById('rotation').value);
+            try {
+                const response = await fetch('/rotate-video', { method: 'POST', body: formData });
+                const data = await response.json();
+                if (data.success) {
+                    statusBox.className = 'status-box active success';
+                    statusBox.innerHTML = `<i class="fas fa-check-circle"></i> Video rotated successfully!<br><a href="/download-file/${data.filename}" class="download-btn" download><i class="fas fa-download"></i> Download Rotated Video</a>`;
+                } else {
+                    statusBox.className = 'status-box active error';
+                    statusBox.innerHTML = `<i class="fas fa-exclamation-circle"></i> Error: ${data.error}`;
+                }
+            } catch (error) {
+                statusBox.className = 'status-box active error';
+                statusBox.innerHTML = `<i class="fas fa-exclamation-circle"></i> Error: ${error.message}`;
+            } finally {
+                btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>
