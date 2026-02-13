@@ -213,6 +213,40 @@ def download():
     
     return jsonify({'download_id': download_id})
 
+@app.route('/get-video-info', methods=['POST'])
+@rate_limit
+def get_video_info():
+    """Get direct video URL without downloading"""
+    data = request.json
+    url = data.get('url', '').strip()
+    quality = data.get('quality', 'best')
+    
+    if not validate_url(url):
+        return jsonify({'error': 'Invalid URL format'}), 400
+    
+    try:
+        import yt_dlp
+        ydl_opts = {
+            'format': f'bestvideo[height<={quality}]+bestaudio/best' if quality != 'best' else 'best',
+            'quiet': True,
+            'no_warnings': True,
+            'extract_flat': False,
+        }
+        
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=False)
+            if info and 'url' in info:
+                return jsonify({'direct_url': info['url'], 'title': info.get('title', 'Video')})
+            elif info and 'entries' in info and len(info['entries']) > 0:
+                first_entry = info['entries'][0]
+                if 'url' in first_entry:
+                    return jsonify({'direct_url': first_entry['url'], 'title': first_entry.get('title', 'Video')})
+        
+        return jsonify({'direct_url': None})
+    except Exception as e:
+        app.logger.error(f"Get video info error: {str(e)}")
+        return jsonify({'direct_url': None})
+
 @app.route('/status/<download_id>')
 def status(download_id):
     status_data = download_status.get(download_id, {'status': 'not_found'})

@@ -68,7 +68,7 @@ async function continueDownload(url, quality, format, statusDiv, progressDiv, do
     downloadBtn.disabled = true;
     downloadBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
     statusDiv.className = 'status processing';
-    statusDiv.textContent = audio_only ? '⏳ Extracting audio...' : '⏳ Starting download...';
+    statusDiv.textContent = audio_only ? '⏳ Extracting audio...' : '⏳ Getting video info...';
     statusDiv.classList.remove('hidden');
     progressDiv.classList.remove('hidden');
     
@@ -77,6 +77,56 @@ async function continueDownload(url, quality, format, statusDiv, progressDiv, do
     messageIndex = 0;
     progressInterval = setInterval(updateProgressAnimation, 1500);
     updateProgressAnimation();
+    
+    try {
+        // First, try to get direct video URL without downloading
+        const infoResponse = await fetch('/get-video-info', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ url, quality })
+        });
+        
+        const infoData = await infoResponse.json();
+        
+        // If we got direct URL, show video immediately
+        if (infoData.direct_url && !audio_only) {
+            clearInterval(progressInterval);
+            progressValue = 100;
+            document.querySelector('.progress-percentage').textContent = '100%';
+            document.querySelector('.progress-fill').style.width = '100%';
+            
+            showStatus('✅ Video ready!', 'success');
+            progressDiv.classList.add('hidden');
+            downloadBtn.disabled = false;
+            downloadBtn.innerHTML = '<span class="btn-text">Download Now</span><span class="btn-icon"><i class="fas fa-download"></i></span>';
+            
+            // Show video player immediately with direct URL
+            const previewDiv = document.createElement('div');
+            previewDiv.className = 'video-preview-section';
+            previewDiv.innerHTML = `
+                <div class="video-player-container">
+                    <h3><i class="fas fa-play-circle"></i> Video Preview</h3>
+                    <video controls autoplay class="video-player">
+                        <source src="${infoData.direct_url}" type="video/mp4">
+                        Your browser does not support the video tag.
+                    </video>
+                </div>
+                <div class="download-actions">
+                    <a href="${infoData.direct_url}" download class="download-final-btn">
+                        <i class="fas fa-download"></i> Download Video
+                    </a>
+                    <button onclick="location.reload()" class="new-download-btn">
+                        <i class="fas fa-plus"></i> Download Another
+                    </button>
+                </div>
+            `;
+            statusDiv.after(previewDiv);
+            return;
+        }
+        
+        // If no direct URL or audio format, proceed with server download
     
     try {
         const response = await fetch('/download', {
@@ -156,6 +206,8 @@ async function checkStatus(downloadId) {
                         </button>
                     </div>
                 `;
+            
+            statusDiv.after(previewDiv);
             } else {
                 previewDiv.innerHTML = `
                     <div class="file-ready-container">
