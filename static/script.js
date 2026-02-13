@@ -214,6 +214,26 @@ document.getElementById('urlInput').addEventListener('keypress', function(e) {
     }
 });
 
+// ExoClick Interstitial Ad Counter
+let adClickCount = parseInt(localStorage.getItem('adClickCount') || '0');
+
+function showExoClickAd(callback) {
+    adClickCount++;
+    localStorage.setItem('adClickCount', adClickCount.toString());
+    
+    // Show ad every 2nd click
+    if (adClickCount % 2 === 0) {
+        // Trigger ExoClick interstitial
+        if (typeof ExoLoader !== 'undefined') {
+            ExoLoader.serve({"zone": "YOUR_ZONE_ID_HERE"});
+        }
+        // Wait 3 seconds then continue
+        setTimeout(callback, 3000);
+    } else {
+        callback();
+    }
+}
+
 // Username Search Functionality
 async function searchUsername() {
     const username = document.getElementById('usernameInput').value.trim();

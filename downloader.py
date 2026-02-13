@@ -129,9 +129,17 @@ class DownloadManager:
         elif url.startswith('http') and any(ext in url.lower() for ext in ['.pdf', '.zip', '.rar', '.jpg', '.png']):
             return self.download_direct(url)
         
-        # Adult content sites (camgirlsleak, etc.)
-        elif any(site in domain for site in ['camgirlsleak.com', 'pornhub.com', 'xvideos.com', 'xnxx.com']):
+        # Adult content sites (videos + cam sites)
+        elif any(site in domain for site in ['camgirlsleak.com', 'pornhub.com', 'xvideos.com', 'xnxx.com', 'redtube.com', 'youporn.com', 'spankbang.com', 'eporner.com', 'xhamster.com', 'chaturbate.com', 'stripchat.com', 'cam4.com', 'bongacams.com', 'myfreecams.com', 'camsoda.com', 'livejasmin.com']):
             return self.download_adult_site(url, quality)
+        
+        # Live streams (RTMP, RTSP, HLS, DASH)
+        elif any(protocol in url.lower() for protocol in ['rtmp://', 'rtmps://', 'rtsp://', 'rtsps://']):
+            return self.download_live_stream(url)
+        
+        # HLS/DASH manifests
+        elif any(ext in url.lower() for ext in ['.mpd', '.m3u', '.m3u8']):
+            return self.download_streaming_manifest(url)
         
         # Default: yt-dlp (supports 1000+ sites)
         else:
@@ -635,7 +643,7 @@ class DownloadManager:
             return filename
     
     def download_adult_site(self, url, quality):
-        """Download from adult content sites with enhanced extraction"""
+        """Download from adult content sites (videos + cam recordings)"""
         proxy = self.get_random_proxy()
         timestamp = int(time.time())
         
@@ -663,12 +671,12 @@ class DownloadManager:
                 filename = ydl.prepare_filename(info)
                 return os.path.basename(filename)
         except Exception as e:
-            # Try to extract direct video URL from page
+            # Try to extract direct video/stream URL from page
             try:
                 response = requests.get(url, headers=ydl_opts['http_headers'])
                 html = response.text
                 
-                # Look for common video URL patterns
+                # Look for video URLs and streaming URLs
                 import re
                 patterns = [
                     r'"(https?://[^"]*\.mp4[^"]*)"',
@@ -677,18 +685,78 @@ class DownloadManager:
                     r'file:"([^"]+\.mp4)"',
                     r'video_url":"([^"]+)"',
                     r'videoUrl":"([^"]+)"',
+                    r'"(https?://[^"]*\.m3u8[^"]*)"',  # HLS streams
+                    r'hlsUrl":"([^"]+)"',
+                    r'stream_url":"([^"]+)"',
                 ]
                 
                 for pattern in patterns:
                     matches = re.findall(pattern, html)
                     if matches:
                         video_url = matches[0].replace('\\/', '/')
-                        print(f"Found direct video URL: {video_url}")
-                        return self.download_direct(video_url)
+                        print(f"Found video/stream URL: {video_url}")
+                        if '.m3u8' in video_url:
+                            return self.download_m3u8(video_url)
+                        else:
+                            return self.download_direct(video_url)
                 
                 raise Exception(f"Could not extract video from this site. Error: {str(e)}")
             except:
                 raise Exception(f"Failed to download from this site. The video may be protected or require login.")
+    
+    def download_live_stream(self, url):
+        """Download RTMP/RTSP live streams"""
+        timestamp = int(time.time())
+        filename = f"{timestamp}_livestream.mp4"
+        filepath = os.path.join(self.download_folder, filename)
+        
+        try:
+            # Use FFmpeg to capture live stream
+            cmd = [
+                'ffmpeg',
+                '-i', url,
+                '-c', 'copy',
+                '-t', '3600',  # Max 1 hour recording
+                '-bsf:a', 'aac_adtstoasc',
+                filepath
+            ]
+            
+            subprocess.run(cmd, check=True, capture_output=True, timeout=3600)
+            return filename
+        except subprocess.TimeoutExpired:
+            # If timeout, return partial recording
+            if os.path.exists(filepath) and os.path.getsize(filepath) > 0:
+                return filename
+            raise Exception("Live stream recording timeout")
+        except Exception as e:
+            raise Exception(f"Live stream download failed: {str(e)}")
+    
+    def download_streaming_manifest(self, url):
+        """Download HLS (.m3u8) or DASH (.mpd) streams"""
+        if '.m3u8' in url.lower():
+            return self.download_m3u8(url)
+        
+        # DASH manifest
+        proxy = self.get_random_proxy()
+        timestamp = int(time.time())
+        filename = f"{timestamp}_stream.mp4"
+        filepath = os.path.join(self.download_folder, filename)
+        
+        ydl_opts = {
+            'format': 'best',
+            'outtmpl': filepath,
+            'quiet': False,
+        }
+        
+        if proxy:
+            ydl_opts['proxy'] = proxy
+        
+        try:
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                ydl.download([url])
+            return filename
+        except Exception as e:
+            raise Exception(f"Streaming manifest download failed: {str(e)}")
     
     def download_direct(self, url):
         proxy = self.get_random_proxy()
