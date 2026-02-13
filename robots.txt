@@ -2,6 +2,7 @@ User-agent: *
 Allow: /
 Allow: /username-finder
 Allow: /do-anything
+Allow: /adult-downloader
 Allow: /tool/*
 
 Disallow: /download
@@ -18,18 +19,48 @@ Disallow: /download-subtitle
 
 Sitemap: https://downloadanything.jo3.org/sitemap.xml
 
-# Crawl-delay for specific bots
+# Major Search Engines
 User-agent: Googlebot
 Crawl-delay: 1
+Allow: /adult-downloader
 
 User-agent: Bingbot
 Crawl-delay: 1
+Allow: /adult-downloader
 
-User-agent: Yandex
-Crawl-delay: 2
+User-agent: Slurp
+Crawl-delay: 1
+Allow: /adult-downloader
 
 User-agent: DuckDuckBot
 Crawl-delay: 1
+Allow: /adult-downloader
 
 User-agent: Baiduspider
 Crawl-delay: 2
+Allow: /adult-downloader
+
+User-agent: YandexBot
+Crawl-delay: 2
+Allow: /adult-downloader
+
+User-agent: Sogou
+Crawl-delay: 2
+Allow: /adult-downloader
+
+User-agent: Exabot
+Crawl-delay: 2
+Allow: /adult-downloader
+
+# Alternative Search Engines
+User-agent: ia_archiver
+Crawl-delay: 2
+
+User-agent: Applebot
+Crawl-delay: 1
+
+User-agent: Twitterbot
+Crawl-delay: 1
+
+User-agent: facebookexternalhit
+Crawl-delay: 1

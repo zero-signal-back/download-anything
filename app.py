@@ -103,6 +103,10 @@ def username_finder():
 def do_anything():
     return render_template('do_anything.html')
 
+@app.route('/adult-downloader')
+def adult_downloader():
+    return render_template('adult_downloader.html')
+
 @app.route('/tool/watermark-remover')
 def tool_watermark():
     return render_template('tool_watermark.html')

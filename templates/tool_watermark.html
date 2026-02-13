@@ -5,14 +5,26 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Watermark Remover - Do Anything</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='tool-styles.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.6/dist/umd/ffmpeg.js"></script>
     <script src="{{ url_for('static', filename='video-tools.js') }}"></script>
     <style>
+        * {
+            box-sizing: border-box;
+        }
+        
+        body {
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+        }
+        
         .tool-container {
             max-width: 700px;
+            width: 95%;
             margin: 40px auto;
-            padding: 30px;
+            padding: 20px;
             background: white;
             border-radius: 20px;
             box-shadow: 0 10px 40px rgba(0,0,0,0.1);
@@ -27,14 +39,15 @@
             background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-            font-size: 36px;
+            font-size: clamp(24px, 5vw, 36px);
             margin-bottom: 10px;
+            word-wrap: break-word;
         }
         
         .upload-box {
             border: 3px dashed #f5576c;
             border-radius: 15px;
-            padding: 50px 20px;
+            padding: 30px 15px;
             text-align: center;
             cursor: pointer;
             transition: all 0.3s;
@@ -51,9 +64,14 @@
         }
         
         .upload-icon {
-            font-size: 60px;
+            font-size: clamp(40px, 10vw, 60px);
             color: #f5576c;
             margin-bottom: 15px;
+        }
+        
+        .upload-box h3 {
+            font-size: clamp(16px, 3vw, 20px);
+            word-wrap: break-word;
         }
         
         .options-panel {
@@ -74,6 +92,7 @@
             margin-bottom: 8px;
             font-weight: 600;
             color: #333;
+            font-size: clamp(14px, 2.5vw, 16px);
         }
         
         .form-group select,
@@ -82,7 +101,7 @@
             padding: 12px;
             border: 2px solid #e0e0e0;
             border-radius: 10px;
-            font-size: 15px;
+            font-size: clamp(14px, 2.5vw, 15px);
             transition: border 0.3s;
         }
         
@@ -99,7 +118,7 @@
             color: white;
             border: none;
             border-radius: 10px;
-            font-size: 18px;
+            font-size: clamp(16px, 3vw, 18px);
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s;
@@ -114,6 +133,7 @@
         .process-button:disabled {
             opacity: 0.5;
             cursor: not-allowed;
+            transform: none;
         }
         
         .status-box {
@@ -121,6 +141,8 @@
             padding: 15px;
             border-radius: 10px;
             display: none;
+            word-wrap: break-word;
+            font-size: clamp(14px, 2.5vw, 16px);
         }
         
         .status-box.active {
@@ -151,6 +173,7 @@
             text-decoration: none;
             border-radius: 10px;
             font-weight: 600;
+            font-size: clamp(14px, 2.5vw, 16px);
         }
         
         .download-btn:hover {
@@ -163,10 +186,49 @@
             color: #f5576c;
             text-decoration: none;
             font-weight: 600;
+            font-size: clamp(14px, 2.5vw, 16px);
+        }
+        
+        @media (max-width: 768px) {
+            .tool-container {
+                margin: 20px auto;
+                padding: 15px;
+            }
+            
+            .upload-box {
+                padding: 20px 10px;
+            }
+            
+            .form-group {
+                margin-bottom: 15px;
+            }
         }
     </style>
 </head>
 <body>
+    <nav style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); padding: 15px 0; box-shadow: 0 2px 10px rgba(0,0,0,0.1); position: fixed; top: 0; left: 0; right: 0; z-index: 1000;">
+        <div style="max-width: 1200px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; padding: 0 20px; flex-wrap: wrap; gap: 10px;">
+            <a href="/" style="color: white; text-decoration: none; font-weight: 600; font-size: clamp(16px, 3vw, 20px);">
+                <i class="fas fa-download"></i> Download Anything
+            </a>
+            <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+                <a href="/" style="color: white; text-decoration: none; font-weight: 500; font-size: clamp(13px, 2.5vw, 15px); transition: opacity 0.3s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">
+                    <i class="fas fa-home"></i> Home
+                </a>
+                <a href="/adult-downloader" style="color: white; text-decoration: none; font-weight: 500; font-size: clamp(13px, 2.5vw, 15px); transition: opacity 0.3s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">
+                    <i class="fas fa-fire"></i> Adult
+                </a>
+                <a href="/username-finder" style="color: white; text-decoration: none; font-weight: 500; font-size: clamp(13px, 2.5vw, 15px); transition: opacity 0.3s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">
+                    <i class="fas fa-search"></i> Username
+                </a>
+                <a href="/do-anything" style="color: white; text-decoration: none; font-weight: 500; font-size: clamp(13px, 2.5vw, 15px); transition: opacity 0.3s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">
+                    <i class="fas fa-magic"></i> Tools
+                </a>
+            </div>
+        </div>
+    </nav>
+    <div style="height: 80px;"></div>
+    
     <script async="async" data-cfasync="false" src="//breachuptown.com/6f/78/04/6f780474eb2a9dd7858efa9f1093bfff.js"></script>
     <div class="container">
         <a href="/do-anything" class="back-link"><i class="fas fa-arrow-left"></i> Back to Tools</a>
@@ -221,7 +283,6 @@
             <div class="status-box" id="statusBox"></div>
         </div>
         
-        <!-- Ad Banner -->
         <div style="text-align: center; margin-top: 30px;">
             <script async="async" data-cfasync="false" src="//breachuptown.com/6f/78/04/6f780474eb2a9dd7858efa9f1093bfff.js"></script>
         </div>
@@ -233,7 +294,8 @@
         function handleFileSelect(event) {
             selectedFile = event.target.files[0];
             if (selectedFile) {
-                document.querySelector('.upload-box h3').textContent = '✓ ' + selectedFile.name;
+                const fileName = selectedFile.name.length > 30 ? selectedFile.name.substring(0, 30) + '...' : selectedFile.name;
+                document.querySelector('.upload-box h3').textContent = '✓ ' + fileName;
                 document.getElementById('optionsPanel').classList.add('active');
             }
         }
