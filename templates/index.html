@@ -29,6 +29,11 @@
     <!-- Adsterra Ad Script -->
     <script src="https://breachuptown.com/6f/78/04/6f780474eb2a9dd7858efa9f1093bfff.js"></script>
     
+    <!-- TrafficStars Video Ad -->
+    <script type="text/javascript">
+        var tsVideoAd = 'https://tsyndicate.com/do2/407d852c85ba43c7b09a928fe78041ce/vast?subid=downloadanything';
+    </script>
+    
     <!-- ExoClick Interstitial Script -->
     <script type="application/javascript" src="https://a.magsrv.com/ad-provider.js"></script>
     <script type="application/javascript">
@@ -160,6 +165,26 @@
         <!-- Adsterra Banner -->
         <div class="ad-container" style="text-align: center; margin: 30px 0;">
             <script src="https://breachuptown.com/6f/78/04/6f780474eb2a9dd7858efa9f1093bfff.js"></script>
+        </div>
+        
+        <!-- TrafficStars Video Ad -->
+        <div style="text-align: center; margin: 30px 0;">
+            <div id="ts-video-ad" style="max-width: 640px; margin: 0 auto;"></div>
+            <script type="text/javascript">
+                (function() {
+                    var vastUrl = 'https://tsyndicate.com/do2/407d852c85ba43c7b09a928fe78041ce/vast?subid=downloadanything';
+                    var adContainer = document.getElementById('ts-video-ad');
+                    if (adContainer) {
+                        var iframe = document.createElement('iframe');
+                        iframe.src = vastUrl;
+                        iframe.style.width = '100%';
+                        iframe.style.height = '360px';
+                        iframe.style.border = 'none';
+                        iframe.style.borderRadius = '15px';
+                        adContainer.appendChild(iframe);
+                    }
+                })();
+            </script>
         </div>
         
         <div class="info-section">
