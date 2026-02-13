@@ -92,7 +92,26 @@ def health():
 
 @app.route('/ping')
 def ping():
-    """Simple ping endpoint"""
+    """Simple ping endpoint with cleanup"""
+    # Cleanup old files on every ping
+    try:
+        import gc
+        gc.collect()  # Force garbage collection
+        
+        # Delete old files
+        cleanup_age = 3600  # 1 hour
+        for folder in [app.config['DOWNLOAD_FOLDER'], app.config['UPLOAD_FOLDER']]:
+            for f in os.listdir(folder):
+                filepath = os.path.join(folder, f)
+                if os.path.isfile(filepath):
+                    if time.time() - os.path.getmtime(filepath) > cleanup_age:
+                        try:
+                            os.remove(filepath)
+                        except:
+                            pass
+    except:
+        pass
+    
     return jsonify({'status': 'ok', 'message': 'pong'})
 
 @app.route('/username-finder')
