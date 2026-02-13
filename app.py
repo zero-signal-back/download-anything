@@ -147,6 +147,10 @@ def robots():
 def sitemap():
     return send_file('sitemap.xml', mimetype='application/xml')
 
+@app.route('/c00cb86409851d1f20a150b191db34f4.html')
+def exoclick_verify():
+    return send_file('c00cb86409851d1f20a150b191db34f4.html', mimetype='text/html')
+
 @app.route('/download', methods=['POST'])
 @rate_limit
 def download():
