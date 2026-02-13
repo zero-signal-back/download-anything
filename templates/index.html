@@ -29,10 +29,11 @@
     <!-- Adsterra Ad Script -->
     <script src="https://breachuptown.com/6f/78/04/6f780474eb2a9dd7858efa9f1093bfff.js"></script>
     
-    <!-- TrafficStars Video Ad -->
-    <script type="text/javascript">
-        var tsVideoAd = 'https://tsyndicate.com/do2/407d852c85ba43c7b09a928fe78041ce/vast?subid=downloadanything';
-    </script>
+    <!-- Video.js for VAST ads -->
+    <link href="https://vjs.zencdn.net/8.10.0/video-js.css" rel="stylesheet" />
+    <script src="https://vjs.zencdn.net/8.10.0/video.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/videojs-contrib-ads@7/dist/videojs.contrib-ads.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/videojs-ima@2/dist/videojs.ima.min.js"></script>
     
     <!-- ExoClick Interstitial Script -->
     <script type="application/javascript" src="https://a.magsrv.com/ad-provider.js"></script>
@@ -168,24 +169,20 @@
         </div>
         
         <!-- TrafficStars Video Ad -->
-        <div style="text-align: center; margin: 30px 0;">
-            <div id="ts-video-ad" style="max-width: 640px; margin: 0 auto;"></div>
-            <script type="text/javascript">
-                (function() {
-                    var vastUrl = 'https://tsyndicate.com/do2/407d852c85ba43c7b09a928fe78041ce/vast?subid=downloadanything';
-                    var adContainer = document.getElementById('ts-video-ad');
-                    if (adContainer) {
-                        var iframe = document.createElement('iframe');
-                        iframe.src = vastUrl;
-                        iframe.style.width = '100%';
-                        iframe.style.height = '360px';
-                        iframe.style.border = 'none';
-                        iframe.style.borderRadius = '15px';
-                        adContainer.appendChild(iframe);
-                    }
-                })();
-            </script>
+        <div style="text-align: center; margin: 30px 0; max-width: 640px; margin-left: auto; margin-right: auto;">
+            <h3 style="color: #2d3748; margin-bottom: 15px;"><i class="fas fa-video"></i> Sponsored Video</h3>
+            <video id="ts-video-player" class="video-js vjs-default-skin" controls preload="auto" width="640" height="360" style="border-radius: 15px;">
+                <source src="" type="video/mp4">
+            </video>
         </div>
+        <script>
+            (function() {
+                var player = videojs('ts-video-player');
+                player.ima({
+                    adTagUrl: 'https://tsyndicate.com/do2/407d852c85ba43c7b09a928fe78041ce/vast?subid=homepage'
+                });
+            })();
+        </script>
         
         <div class="info-section">
             <div class="info-card">
