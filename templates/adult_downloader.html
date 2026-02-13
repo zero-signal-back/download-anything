@@ -40,7 +40,10 @@
             <a href="/" style="color: white; text-decoration: none; font-weight: 600; font-size: 20px;">
                 <i class="fas fa-download"></i> Download Anything
             </a>
-            <div style="display: flex; gap: 20px;">
+            <button class="mobile-menu-btn" onclick="toggleMenu()">
+                <i class="fas fa-bars"></i>
+            </button>
+            <div class="nav-links" id="navLinks" style="display: flex; gap: 20px;">
                 <a href="/" style="color: white; text-decoration: none; font-weight: 500; transition: opacity 0.3s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">
                     <i class="fas fa-home"></i> Home
                 </a>
@@ -231,5 +234,11 @@
     </div>
     
     <script src="{{ url_for('static', filename='script.js') }}"></script>
+
+    <script>
+        function toggleMenu() {
+            document.getElementById('navLinks').classList.toggle('active');
+        }
+    </script>
 </body>
 </html>
