@@ -14,6 +14,16 @@ from collections import defaultdict
 from logging.handlers import RotatingFileHandler
 from werkzeug.utils import secure_filename
 
+# FFmpeg setup
+try:
+    from static_ffmpeg import run
+    ffmpeg_path, ffprobe_path = run.get_or_download_version('latest')
+    os.environ['FFMPEG_BINARY'] = ffmpeg_path
+    os.environ['FFPROBE_BINARY'] = ffprobe_path
+except:
+    # Use system FFmpeg
+    pass
+
 app = Flask(__name__)
 app.config['DOWNLOAD_FOLDER'] = 'downloads'
 app.config['UPLOAD_FOLDER'] = 'uploads'
