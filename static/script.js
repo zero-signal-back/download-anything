@@ -56,6 +56,13 @@ async function startDownload() {
         return;
     }
     
+    // Show ad before download
+    showExoClickAd(() => {
+        continueDownload(url, quality, format, statusDiv, progressDiv, downloadBtn);
+    });
+}
+
+async function continueDownload(url, quality, format, statusDiv, progressDiv, downloadBtn) {
     const audio_only = (format === 'audio');
     
     downloadBtn.disabled = true;
