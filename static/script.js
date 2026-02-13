@@ -127,8 +127,6 @@ async function continueDownload(url, quality, format, statusDiv, progressDiv, do
         }
         
         // If no direct URL or audio format, proceed with server download
-    
-    try {
         const response = await fetch('/download', {
             method: 'POST',
             headers: {
@@ -152,11 +150,11 @@ async function continueDownload(url, quality, format, statusDiv, progressDiv, do
         checkStatus(currentDownloadId);
         
     } catch (error) {
+        clearInterval(progressInterval);
         showStatus('❌ Error: ' + error.message, 'error');
         downloadBtn.disabled = false;
         downloadBtn.innerHTML = '<span class="btn-text">Download Now</span><span class="btn-icon"><i class="fas fa-download"></i></span>';
         progressDiv.classList.add('hidden');
-        clearInterval(progressInterval);
     }
 }
 
@@ -432,8 +430,10 @@ function displaySearchResults(data) {
 }
 
 // Enter key support for username search
-document.getElementById('usernameInput').addEventListener('keypress', function(e) {
-    if (e.key === 'Enter') {
-        searchUsername();
-    }
-});
+if (document.getElementById('usernameInput')) {
+    document.getElementById('usernameInput').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            searchUsername();
+        }
+    });
+}
