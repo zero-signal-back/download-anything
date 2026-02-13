@@ -224,7 +224,7 @@ class DownloadManager:
             'fragment_retries': self.max_retries,
             'extractor_args': {
                 'youtube': {
-                    'player_client': ['android', 'web'],
+                    'player_client': ['android', 'web', 'ios'],
                     'skip': ['hls', 'dash']
                 }
             },
@@ -239,10 +239,18 @@ class DownloadManager:
         if proxy:
             ydl_opts['proxy'] = proxy
         
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=True)
-            filename = ydl.prepare_filename(info)
-            return self.sanitize_filename(os.path.basename(filename))
+        try:
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(url, download=True)
+                filename = ydl.prepare_filename(info)
+                return self.sanitize_filename(os.path.basename(filename))
+        except Exception as e:
+            error_msg = str(e)
+            if '429' in error_msg or 'Too Many Requests' in error_msg:
+                raise Exception("YouTube rate limit reached. Please try again in a few minutes.")
+            elif 'Sign in' in error_msg or 'bot' in error_msg:
+                raise Exception("YouTube requires verification. Please try again later.")
+            raise e
     
     def download_dailymotion(self, url, quality):
         proxy = self.get_random_proxy()
@@ -790,6 +798,16 @@ class DownloadManager:
                 'writeautomaticsub': True,
                 'subtitlesformat': format_type,
                 'quiet': True,
+                'extractor_args': {
+                    'youtube': {
+                        'player_client': ['android', 'web'],
+                        'skip': ['hls', 'dash']
+                    }
+                },
+                'http_headers': {
+                    'User-Agent': 'com.google.android.youtube/17.36.4 (Linux; U; Android 12; GB) gzip',
+                    'Accept-Language': 'en-US,en;q=0.9',
+                },
             }
             
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -825,4 +843,9 @@ class DownloadManager:
                 return subtitles if subtitles else None
                 
         except Exception as e:
-            raise Exception(f"Subtitle download failed: {str(e)}")
+            error_msg = str(e)
+            if '429' in error_msg or 'Too Many Requests' in error_msg:
+                raise Exception("YouTube rate limit reached. Please try again in a few minutes.")
+            elif 'Sign in' in error_msg or 'bot' in error_msg:
+                raise Exception("YouTube requires verification. Please try again later or use a different video.")
+            raise Exception(f"Subtitle download failed: {error_msg}")
